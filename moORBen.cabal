@@ -24,21 +24,29 @@ executable moORBen
 
 library
   hs-source-dirs:       src
-  exposed-modules:      MoorbenParser
+  exposed-modules:      Parser.MoorbenParser
+                      , Runtime.MoorbenInterpreter
+                      , Runtime.Data.Position
+                      , Runtime.Position
+                      , Runtime.Data.Velocity
+                      , Runtime.Velocity
   build-depends:        base
                       , parsec
                       , flow == 1.0.*
+                      , lens == 4.*
+                      , mtl == 2.*
+  default-language:     Haskell2010
 
 test-suite moORBen-test
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
-  main-is:             Spec.hs
-  build-depends:       base
-                     , moORBen -any
-                     , HUnit
-                     , containers == 0.5.*
-                     , HTF == 0.13.*
-                     , parsec
-                     , flow == 1.0.*
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-  default-language:    Haskell2010
+  type:                 exitcode-stdio-1.0
+  hs-source-dirs:       test
+  main-is:              Spec.hs
+  build-depends:        base
+                      , moORBen -any
+                      , HUnit
+                      , containers == 0.5.*
+                      , HTF == 0.13.*
+                      , parsec
+                      , flow == 1.0.*
+  ghc-options:          -threaded -rtsopts -with-rtsopts=-N
+  default-language:     Haskell2010

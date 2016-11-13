@@ -1,4 +1,4 @@
-module MoorbenParser where
+module Parser.MoorbenParser where
 
 import           Data.Function
 import           Data.List
@@ -38,8 +38,8 @@ data Token = TokString String
            | TokDuplicate Int
            | TokDuplicateToOther Int
            deriving Show
-data Pos = FilePos { x :: Int, y :: Int } deriving Show
-data TokenWithPosition = TokenWithPosition Pos Token deriving Show
+data FilePos = FilePos { x :: Int, y :: Int } deriving Show
+data TokenWithPosition = TokenWithPosition FilePos Token deriving Show
 data SourceCode = SourceCode [TokenWithPosition] deriving Show
 
 whiteSpaces :: Parser ()
@@ -161,13 +161,17 @@ mLever = do
 mLang :: Parser SourceCode
 mLang = do
   whiteSpaces
-  let rawParsers = [mString, mPush]
+  let rawParsers = [
+                    mPush, mPop, mSpike, mOrb, mPortalPocketDimensionEntrance, mComparator,
+                    mLever
+                   ]
   let rawParsersWrapped = map wrapWithPosition rawParsers
   let highParsers = [] :: [Parser TokenWithPosition]
   let allParsers = rawParsersWrapped ++ highParsers
   let exprParser = foldl1 (<|>) allParsers
   x <- sepEndBy exprParser whiteSpaces
+  eof
   return $ SourceCode x
 
 parseLang :: String -> Either ParseError SourceCode
-parseLang = parse mLang "mOOrb"
+parseLang = parse mLang "moORBen"

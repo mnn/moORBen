@@ -8,7 +8,7 @@ import           Flow
 import           Test.Framework
 import           Text.ParserCombinators.Parsec hiding (spaces)
 
-import           MoorbenParser
+import           Parser.MoorbenParser
 
 posNegCase :: Parser a -> [String -> IO ()]
 posNegCase parser = [positive, negative]

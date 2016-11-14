@@ -1,6 +1,7 @@
-{-# LANGUAGE TemplateHaskell #-}
-
-module Runtime.MoorbenInterpreter (interpret, InterpreterFlag(..)) where
+module Runtime.MoorbenInterpreter (
+  interpret
+, InterpreterFlag(..)
+) where
 
 import           Control.Arrow
 import           Control.Lens
@@ -10,36 +11,28 @@ import           Control.Monad.State
 import           Parser.MoorbenParser
 
 import           Runtime.Data.Position
-import qualified Runtime.Position      as Pos
+import qualified Runtime.Position            as Pos
 
 import           Runtime.Data.Velocity
-import qualified Runtime.Velocity      as Vel
+import qualified Runtime.Velocity            as Vel
+
+import qualified Runtime.BallState           as Ball
+import           Runtime.Data.BallState
+
+import           Runtime.Data.RuntimeState
+import qualified Runtime.RuntimeState        as RtState
+
+import           Runtime.Data.RuntimeOptions
+import qualified Runtime.RuntimeOptions      as RtOpts
 
 data InterpreterFlag = Verbose deriving (Show, Eq)
-
-data BallState = BallState
-  { _position :: Position
-  , _velocity :: Velocity
-  } deriving (Show)
-
-data RuntimeOptions = RuntimeOptions
-  { _verbose :: Bool
-  } deriving (Show)
-
-data RuntimeState = RuntimeState
-  { _sourceCode :: SourceCode
-  , _options    :: RuntimeOptions
-  , _balls      :: [BallState]
-  } deriving (Show)
-
-makeLenses ''BallState
-makeLenses ''RuntimeState
 
 type RuntimeStateMonad a = StateT RuntimeState a
 
 removeBall :: RuntimeStateMonad IO ()
 removeBall = do
   x <- use balls
+  let a = head x & \x -> x^.Ball.velocity.Vel.x
   io $ putStrLn $ "removeBall: balls = " ++ show x
   balls %= tail
   return ()

@@ -3,4 +3,4 @@ module Runtime.Position
   , module Runtime.Data.Position
   ) where
 
-import Runtime.Data.Position
+import           Runtime.Data.Position

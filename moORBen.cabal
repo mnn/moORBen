@@ -30,6 +30,12 @@ library
                       , Runtime.Position
                       , Runtime.Data.Velocity
                       , Runtime.Velocity
+                      , Runtime.Data.BallState
+                      , Runtime.BallState
+                      , Runtime.Data.RuntimeState
+                      , Runtime.RuntimeState
+                      , Runtime.Data.RuntimeOptions
+                      , Runtime.RuntimeOptions
   build-depends:        base
                       , parsec
                       , flow == 1.0.*

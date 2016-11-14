@@ -3,4 +3,4 @@ module Runtime.Velocity
   , module Runtime.Data.Velocity
   ) where
 
-import Runtime.Data.Velocity
+import           Runtime.Data.Velocity

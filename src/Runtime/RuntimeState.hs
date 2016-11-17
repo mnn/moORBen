@@ -44,7 +44,7 @@ pushToTape tapes@(Tapes baseIdx stacks) idx item = Tapes baseIdx newStacks
 popFromTape :: Tapes -> Int -> (Maybe StackItem, Tapes)
 popFromTape tapes@(Tapes baseIdx stacks) idx = updated --(item, Tapes baseIdx newStacks)
   where
-    stack = stacks !! idx
+    stack = stacks !! stackIndexToListIndex tapes idx
     items = itemsFromTapeStack stack
     item = listToMaybe items
     newStacks = stacks & ix (stackIndexToListIndex tapes idx) %~ removeHeadFromStack

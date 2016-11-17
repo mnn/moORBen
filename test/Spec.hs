@@ -97,6 +97,18 @@ test_ensureTapeIndexIsValid = do
   let tapes3e = Tapes (-2) [TapeStack [], TapeStack [], TapeStack [StackBool True], TapeStack []]
   assertEqual tapes3e tapes3
 
+test_pushToTape = do
+  let tape1 = Tapes 0 [TapeStack []]
+  let sbt = StackBool True
+  let si1 = StackInt 1
+  let scA = StackChar 'A'
+  assertEqual (Tapes 0 [TapeStack [sbt]]) $ pushToTape tape1 0 sbt
+  let tape2 = Tapes 1 [TapeStack []]
+  assertEqual (Tapes 1 [TapeStack [sbt]]) $ pushToTape tape2 1 sbt
+  let tape3 = Tapes 1 [TapeStack [si1],TapeStack [sbt]]
+  let tape3e = Tapes 1 [TapeStack [si1],TapeStack [scA, sbt]]
+  assertEqual tape3e $ pushToTape tape3 2 scA
+
 {-
 test_ = do
   let pos = [""]

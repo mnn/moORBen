@@ -8,8 +8,9 @@ import           Runtime.Data.Position
 import           Runtime.Data.Velocity
 
 data BallState = BallState
-  { _position :: Position
-  , _velocity :: Velocity
-  } deriving (Show)
+  { _position  :: Position
+  , _velocity  :: Velocity
+  , _tapeIndex :: Int
+  } deriving (Show, Eq)
 
 makeLenses ''BallState

@@ -7,15 +7,15 @@ import           Flow
 import           Text.Parsec.Pos
 import           Text.ParserCombinators.Parsec hiding (spaces)
 
-data GenericOperation = OpAdd deriving Show
+data GenericOperation = OpAdd deriving (Show, Eq)
 data RelationalOperator = RelLess
                          | RelMore
                          | RelMoreOrEqual
                          | RelLessOrEqual
                          | RelEqual
                          | RelNonEqual
-                           deriving Show
-data LeverBounceDirection = BounceLeft | BounceRight deriving Show
+                           deriving (Show, Eq)
+data LeverBounceDirection = BounceLeft | BounceRight deriving (Show, Eq)
 data Token = TokString String
            | TokInt Int
            | TokPush Token
@@ -37,10 +37,10 @@ data Token = TokString String
            | TokLeverRemote LeverBounceDirection String
            | TokDuplicate Int
            | TokDuplicateToOther Int
-           deriving Show
-data FilePos = FilePos { x :: Int, y :: Int } deriving Show
-data TokenWithPosition = TokenWithPosition FilePos Token deriving Show
-data SourceCode = SourceCode [TokenWithPosition] deriving Show
+           deriving (Show, Eq)
+data FilePos = FilePos { x :: Int, y :: Int } deriving (Show, Eq)
+data TokenWithPosition = TokenWithPosition FilePos Token deriving (Show, Eq)
+data SourceCode = SourceCode [TokenWithPosition] deriving (Show, Eq)
 
 whiteSpaces :: Parser ()
 whiteSpaces = skipMany $ space <|> char '\n'

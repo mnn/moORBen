@@ -7,6 +7,6 @@ import           Control.Lens
 data Position = Position
   { _x :: Int
   , _y :: Int
-  } deriving (Show)
+  } deriving (Show, Eq)
 
 makeLenses ''Position

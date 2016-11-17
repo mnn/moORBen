@@ -3,12 +3,16 @@
 
 module Main where
 
+import           Control.Arrow
 import           Data.Either                   (isLeft)
+import           Data.Function
 import           Flow
 import           Test.Framework
 import           Text.ParserCombinators.Parsec hiding (spaces)
 
 import           Parser.MoorbenParser
+import qualified Runtime.Data.RuntimeState     as RtState
+import           Runtime.RuntimeState
 
 posNegCase :: Parser a -> [String -> IO ()]
 posNegCase parser = [positive, negative]
@@ -77,6 +81,21 @@ test_mLever = do
   let pos = ["/", "/?", "/abc", "\\", "\\?", "\\abc"]
   let neg = ["//", "\\\\", "", "_", "?", "abc"]
   testParser mLever pos neg
+
+test_ensureTapeIndexIsValid = do
+  assertEqual (Tapes 0 [TapeStack []]) startingTapes
+
+  let tapes1 = ensureTapeIndexIsValid startingTapes 3
+  let tapes1e = Tapes 0 [TapeStack [], TapeStack [], TapeStack [], TapeStack []]
+  assertEqual tapes1e tapes1
+
+  let tapes2 = ensureTapeIndexIsValid startingTapes (-2)
+  let tapes2e = Tapes (-2) [TapeStack [], TapeStack [], TapeStack []]
+  assertEqual tapes2e tapes2
+
+  let tapes3 = Tapes 0 [TapeStack [StackBool True]] & \x->ensureTapeIndexIsValid x (-2) & \x->ensureTapeIndexIsValid x 1
+  let tapes3e = Tapes (-2) [TapeStack [], TapeStack [], TapeStack [StackBool True], TapeStack []]
+  assertEqual tapes3e tapes3
 
 {-
 test_ = do

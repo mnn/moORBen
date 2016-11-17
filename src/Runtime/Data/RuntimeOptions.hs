@@ -5,6 +5,6 @@ import           Control.Lens
 
 data RuntimeOptions = RuntimeOptions
   { _verbose :: Bool
-  } deriving (Show)
+  } deriving (Show, Eq)
 
 makeLenses ''RuntimeOptions

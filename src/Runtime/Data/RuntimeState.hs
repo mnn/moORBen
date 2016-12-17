@@ -4,13 +4,13 @@ module Runtime.Data.RuntimeState where
 import           Control.Lens
 
 import           Parser.MoorbenParser
-import           Runtime.Data.BallState
+import           Runtime.Data.OrbState
 import           Runtime.Data.RuntimeOptions
 
 data RuntimeState = RuntimeState
   { _sourceCode :: SourceCode
   , _options    :: RuntimeOptions
-  , _balls      :: [BallState]
+  , _orbs       :: [OrbState]
   , _tapes      :: Tapes
   } deriving (Show, Eq)
 

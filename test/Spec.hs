@@ -112,6 +112,10 @@ test_pushToTape = do
   let tape3 = Tapes 1 [TapeStack [si1],TapeStack [sbt]]
   let tape3e = Tapes 1 [TapeStack [si1],TapeStack [scA, sbt]]
   assertEqual tape3e $ pushToTape tape3 2 scA
+  
+  let tape4 = Tapes 0 [TapeStack []]
+  let tape4e = Tapes 0 [TapeStack [StackChar 'A', StackChar 'B']]
+  assertEqual tape4e $ pushStringToTape tape4 0 "AB"
 
 
 test_popFromTape = do

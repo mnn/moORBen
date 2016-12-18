@@ -42,6 +42,9 @@ data FilePos = FilePos { x :: Int, y :: Int } deriving (Show, Eq)
 data TokenWithPosition = TokenWithPosition FilePos Token deriving (Show, Eq)
 data SourceCode = SourceCode [TokenWithPosition] deriving (Show, Eq)
 
+filePosToPair :: FilePos -> (Int, Int)
+filePosToPair (FilePos x y) = (x, y)
+
 whiteSpaces :: Parser ()
 whiteSpaces = skipMany $ space <|> char '\n'
 

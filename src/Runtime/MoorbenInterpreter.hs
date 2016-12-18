@@ -8,6 +8,9 @@ import           Control.Concurrent
 import           Control.Lens
 import           Control.Monad
 import           Control.Monad.State
+import           Data.Map.Strict             (Map)
+import qualified Data.Map.Strict             as Map
+import           Data.Maybe
 
 import           Utils
 
@@ -27,6 +30,9 @@ import qualified Runtime.RuntimeState        as RtState
 
 import           Runtime.Data.RuntimeOptions
 import qualified Runtime.RuntimeOptions      as RtOpts
+
+import           Runtime.Data.World          (World)
+import qualified Runtime.World               as World
 
 data InterpreterFlag = Verbose deriving (Show, Eq)
 
@@ -62,8 +68,21 @@ testRun = do
     run
   return ()
 
-interpretInstruction :: Parser.TokenWithPosition -> RuntimeStateMonad IO ()
-interpretInstruction token = do
+destroyOrb :: (Int, Int) -> RuntimeStateMonad IO ()
+destroyOrb (x, y) = do
+  orbs %= filter fn
+  return ()
+    where
+      fn (Orb.OrbState (Pos.Position fx fy) _ _) = x /= fx && y /=fy
+
+interpretInstruction :: (Parser.TokenWithPosition, Int) -> RuntimeStateMonad IO ()
+interpretInstruction ((Parser.TokenWithPosition pos token), tapeIdx) = do
+  -- TODO
+  io $ putStrLn $ "Processing instruction " ++ show token
+  case token of
+    Parser.TokSpike -> destroyOrb $ Parser.filePosToPair pos
+    (Parser.TokPush (Parser.TokString str)) -> tapes %= \t -> RtState.pushStringToTape t tapeIdx str
+    _ -> return ()
   return ()
 
 moveOrb :: OrbState -> OrbState
@@ -78,13 +97,26 @@ moveOrb orb = OrbState {
     oldVelY = orb^.Orb.velocity.Vel.y
     velY = if oldVelY >= 0 then 1 else oldVelY - 1
     orbPos = orb^.Orb.position
-    x = Pos._x orbPos + signum velX
-    y = Pos._y orbPos + signum velY
+    x = orbPos^.Pos.x + signum velX
+    y = orbPos^.Pos.y + signum velY
+
+instructionsBehindBalls :: RuntimeStateMonad IO [(Parser.TokenWithPosition, Int)]
+instructionsBehindBalls = do
+  state <- get
+  sWorld <- use world
+  sOrbs <- use orbs
+  return $ sOrbs & orbsPositions & orbPositionsToTokens sWorld
+    where
+      orbsPositions :: [OrbState] -> [(Position, Int)]
+      orbsPositions = mapInd $ \x idx-> (view Orb.position x, idx)
+      orbPositionsToTokens :: World -> [(Position, Int)] -> [(Parser.TokenWithPosition, Int)]
+      orbPositionsToTokens w xs = xs & map (orbPosToToken w) & catMaybes
+      orbPosToToken :: World -> (Position, Int) -> Maybe (Parser.TokenWithPosition, Int)
+      orbPosToToken w (pos, idx) = fmap (\x -> (x, idx)) (Map.lookup (Pos.positionToPair pos) (w^.World.map))
 
 run :: RuntimeStateMonad IO ()
 run = do
-  currentOrbs <- use orbs
-  let gotOrbs = currentOrbs & null & not
+  gotOrbs <- fmap (not . null) (use orbs)
   when gotOrbs $ do
     orbs %= map moveOrb
 
@@ -92,9 +124,8 @@ run = do
     io $ putStrLn $ "new orbs: " ++ show newOrbs
     io $ threadDelay $ 1 * 1000 * 1000
 
-    -- get instructions behind orbs
---     let instructions =
---     mapM_ interpretInstruction instructions
+    instructions <- instructionsBehindBalls
+    mapM_ interpretInstruction instructions
     run
   return ()
 
@@ -107,11 +138,13 @@ interpret flags code = do
   when verbose $ putStrLn "Input code:"
   putStrLn $ "TODO intepreting: " ++ show code
   let initialState = RuntimeState {
-     _sourceCode = code
+      _sourceCode = code
+    , _world = World.createWorld code
     , _options = RuntimeOptions { _verbose = verbose }
     , _orbs = startingBalls code
     , _tapes = RtState.startingTapes
     }
 --   execStateT testRun initialState
+  putStrLn $ "initialState = " ++ show initialState
   execStateT run initialState
   return ()

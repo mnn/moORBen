@@ -36,12 +36,15 @@ library
                       , Runtime.RuntimeState
                       , Runtime.Data.RuntimeOptions
                       , Runtime.RuntimeOptions
+                      , Runtime.World
+                      , Runtime.Data.World
                       , Utils
   build-depends:        base
                       , parsec
                       , flow == 1.0.*
                       , lens == 4.*
                       , mtl == 2.*
+                      , containers == 0.5.*
   default-language:     Haskell2010
 
 test-suite moORBen-test

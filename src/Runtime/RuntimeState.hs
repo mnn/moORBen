@@ -41,6 +41,11 @@ pushToTape tapes@(Tapes baseIdx stacks) idx item = Tapes baseIdx newStacks
     update :: TapeStack -> TapeStack
     update (TapeStack items) = TapeStack (item:items)
 
+pushStringToTape :: Tapes -> Int -> String -> Tapes
+pushStringToTape tapes _ [] = tapes
+pushStringToTape tapes idx xs = pushStringToTape newTapes idx (init xs)
+  where newTapes = pushToTape tapes idx (StackChar $ last xs)
+
 popFromTape :: Tapes -> Int -> (Maybe StackItem, Tapes)
 popFromTape tapes@(Tapes baseIdx stacks) idx = updated --(item, Tapes baseIdx newStacks)
   where

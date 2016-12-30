@@ -45,23 +45,6 @@ startingBalls (Parser.SourceCode tokens) = positions & map convertPosition & map
     , _orbStateTapeIndex = idx
     }
 
-removeBall :: RuntimeStateMonad IO ()
-removeBall = do
-  orbsValue <- use orbs
-  let a = head orbsValue & \y -> y^.velocity.x
-  io $ putStrLn $ "removeBall: orbs = " ++ show orbsValue
-  orbs %= tail
-  return ()
-
-testRun :: RuntimeStateMonad IO ()
-testRun = do
-  currentBalls <- use orbs
-  let gotBalls = currentBalls & null & not
-  when gotBalls $ do
-    removeBall
-    run
-  return ()
-
 destroyOrb :: (Int, Int) -> RuntimeStateMonad IO ()
 destroyOrb (x, y) = do
   orbs %= filter fn
@@ -139,7 +122,6 @@ interpret flags code = do
     , _runtimeStateOrbs = startingBalls code
     , _runtimeStateTapes = startingTapes
     }
---   execStateT testRun initialState
   putStrLn $ "initialState = " ++ show initialState
   execStateT run initialState
   return ()

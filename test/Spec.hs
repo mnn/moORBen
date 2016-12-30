@@ -11,7 +11,6 @@ import           Test.Framework
 import           Text.ParserCombinators.Parsec hiding (spaces)
 
 import           Parser.MoorbenParser
-import qualified Runtime.Data.RuntimeState     as RtState
 import           Runtime.RuntimeState
 
 posNegCase :: Parser a -> [String -> IO ()]

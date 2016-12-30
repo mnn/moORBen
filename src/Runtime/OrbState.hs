@@ -1,6 +1,20 @@
-module Runtime.OrbState
-  ( module Runtime.OrbState
-  , module Runtime.Data.OrbState
-  ) where
+{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE TemplateHaskell        #-}
+{-# LANGUAGE TypeSynonymInstances   #-}
 
-import           Runtime.Data.OrbState
+module Runtime.OrbState where
+
+import           Control.Lens
+
+import           Runtime.Position
+import           Runtime.Velocity
+
+data OrbState = OrbState
+  { _orbStatePosition  :: Position
+  , _orbStateVelocity  :: Velocity
+  , _orbStateTapeIndex :: Int
+  } deriving (Show, Eq)
+
+makeFields ''OrbState

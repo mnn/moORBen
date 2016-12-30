@@ -1,9 +1,20 @@
-module Runtime.Velocity
-  ( module Runtime.Velocity
-  , module Runtime.Data.Velocity
-  ) where
+{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE TemplateHaskell        #-}
+{-# LANGUAGE TypeSynonymInstances   #-}
 
-import           Runtime.Data.Velocity
+module Runtime.Velocity where
+
+import           Control.Lens
+import           Runtime.Position
+
+data Velocity = Velocity
+ { _velocityX :: Int
+ , _velocityY :: Int
+ } deriving (Show, Eq)
+
+makeFields ''Velocity
 
 startingVelocity :: Velocity
-startingVelocity = Velocity { _x = 0, _y = 0 }
+startingVelocity = Velocity { _velocityX = 0, _velocityY = 0 }

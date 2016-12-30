@@ -26,18 +26,12 @@ library
   hs-source-dirs:       src
   exposed-modules:      Parser.MoorbenParser
                       , Runtime.MoorbenInterpreter
-                      , Runtime.Data.Position
                       , Runtime.Position
-                      , Runtime.Data.Velocity
                       , Runtime.Velocity
-                      , Runtime.Data.OrbState
                       , Runtime.OrbState
-                      , Runtime.Data.RuntimeState
                       , Runtime.RuntimeState
-                      , Runtime.Data.RuntimeOptions
                       , Runtime.RuntimeOptions
                       , Runtime.World
-                      , Runtime.Data.World
                       , Utils
   build-depends:        base
                       , parsec

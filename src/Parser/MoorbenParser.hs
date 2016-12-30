@@ -9,12 +9,12 @@ import           Text.ParserCombinators.Parsec hiding (spaces)
 
 data GenericOperation = OpAdd deriving (Show, Eq)
 data RelationalOperator = RelLess
-                         | RelMore
-                         | RelMoreOrEqual
-                         | RelLessOrEqual
-                         | RelEqual
-                         | RelNonEqual
-                           deriving (Show, Eq)
+                        | RelMore
+                        | RelMoreOrEqual
+                        | RelLessOrEqual
+                        | RelEqual
+                        | RelNonEqual
+                          deriving (Show, Eq)
 data LeverBounceDirection = BounceLeft | BounceRight deriving (Show, Eq)
 data Token = TokString String
            | TokInt Int

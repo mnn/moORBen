@@ -9,6 +9,7 @@ module Runtime.MoorbenInterpreter (
 , InterpreterFlag(..)
 ) where
 
+import           Control.Applicative
 import           Control.Arrow
 import           Control.Concurrent
 import           Control.Lens
@@ -49,8 +50,23 @@ destroyOrb :: (Int, Int) -> RuntimeStateMonad IO ()
 destroyOrb (x, y) = do
   orbs %= filter fn
   return ()
-    where
-      fn (OrbState (Position fx fy) _ _) = x /= fx && y /=fy
+    where fn (OrbState (Position fx fy) _ _) = x /= fx && y /=fy
+
+invokeBuiltInPocketDimension :: String -> RuntimeStateMonad IO Bool
+invokeBuiltInPocketDimension name = do
+  -- TODO
+  return False
+
+invokeUserDefinedPocketDimension :: String -> RuntimeStateMonad IO Bool
+invokeUserDefinedPocketDimension name = do
+  -- TODO
+  return False
+
+invokePocketDimension :: String -> RuntimeStateMonad IO ()
+invokePocketDimension name = do
+  res <- invokeBuiltInPocketDimension name <|> invokeUserDefinedPocketDimension name
+  unless res (error $ "Pocket dimension \"" ++ name ++ "\" not found.")
+  return ()
 
 interpretInstruction :: (Parser.TokenWithPosition, Int) -> RuntimeStateMonad IO ()
 interpretInstruction (Parser.TokenWithPosition pos token, tapeIdx) = do
@@ -59,6 +75,7 @@ interpretInstruction (Parser.TokenWithPosition pos token, tapeIdx) = do
   case token of
     Parser.TokSpike -> destroyOrb $ Parser.filePosToPair pos
     (Parser.TokPush (Parser.TokString str)) -> tapes %= \t -> pushStringToTape t tapeIdx str
+    (Parser.TokPocketDimensionEntrance name) -> invokePocketDimension name
     _ -> return ()
   return ()
 

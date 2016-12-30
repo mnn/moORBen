@@ -1,6 +1,15 @@
-module Runtime.RuntimeOptions
-  ( module Runtime.RuntimeOptions
-  , module Runtime.Data.RuntimeOptions
-  ) where
+{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE TemplateHaskell        #-}
+{-# LANGUAGE TypeSynonymInstances   #-}
 
-import           Runtime.Data.RuntimeOptions
+module Runtime.RuntimeOptions where
+
+import           Control.Lens
+
+data RuntimeOptions = RuntimeOptions
+  { _verbose :: Bool
+  } deriving (Show, Eq)
+
+makeFields ''RuntimeOptions

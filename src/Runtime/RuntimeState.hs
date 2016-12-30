@@ -1,12 +1,35 @@
-module Runtime.RuntimeState
-  ( module Runtime.RuntimeState
-  , module Runtime.Data.RuntimeState
-  ) where
+{-# LANGUAGE FlexibleInstances      #-}
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE TemplateHaskell        #-}
+{-# LANGUAGE TypeSynonymInstances   #-}
+
+module Runtime.RuntimeState where
 
 import           Control.Lens
 import           Data.Maybe
 
-import           Runtime.Data.RuntimeState
+import           Parser.MoorbenParser
+import           Runtime.OrbState
+import           Runtime.RuntimeOptions
+import           Runtime.World
+
+data RuntimeState = RuntimeState
+  { _runtimeStateSourceCode :: SourceCode
+  , _runtimeStateOptions    :: RuntimeOptions
+  , _runtimeStateOrbs       :: [OrbState]
+  , _runtimeStateTapes      :: Tapes
+  , _runtimeStateWorld      :: World
+  } deriving (Show, Eq)
+
+data Tapes = Tapes Int [TapeStack] deriving (Show, Eq)
+data TapeStack = TapeStack [StackItem] deriving (Show, Eq)
+data StackItem = StackChar Char
+                | StackBool Bool
+                | StackInt Int
+                deriving (Show, Eq)
+
+makeFields ''RuntimeState
 
 startingTapes :: Tapes
 startingTapes = Tapes 0 [TapeStack []]

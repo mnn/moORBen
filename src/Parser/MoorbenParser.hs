@@ -1,5 +1,6 @@
 module Parser.MoorbenParser where
 
+import           Control.Monad
 import           Data.Function
 import           Data.List
 import           Data.Maybe
@@ -156,7 +157,7 @@ mLever = do
 mComment :: Parser Token
 mComment = do
   char '`'
-  str <- manyTill anyChar ((do {newline; return ()}) <|> eof)
+  str <- manyTill anyChar (void newline <|> eof)
   return $ TokComment str
 
 -- Phase 2

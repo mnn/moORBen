@@ -37,6 +37,7 @@ data Token = TokString String
            | TokLeverRemote LeverBounceDirection String
            | TokDuplicate Int
            | TokDuplicateToOther Int
+           | TokComment String
            deriving (Show, Eq)
 data FilePos = FilePos { x :: Int, y :: Int } deriving (Show, Eq)
 data TokenWithPosition = TokenWithPosition FilePos Token deriving (Show, Eq)
@@ -152,6 +153,12 @@ mLever = do
                                   (Just _, _)        -> TokLeverTest dir
                                   (Nothing, Just id) -> TokLeverRemote dir id
 
+mComment :: Parser Token
+mComment = do
+  char '`'
+  str <- manyTill anyChar ((do {newline; return ()}) <|> eof)
+  return $ TokComment str
+
 -- Phase 2
 -- mPortalTwoWay :: Parser Token
 -- mPortalEntrance :: Parser Token
@@ -166,7 +173,7 @@ mLang = do
   whiteSpaces
   let rawParsers = [
                     mPush, mPop, mSpike, mOrb, mPortalPocketDimensionEntrance, mComparator,
-                    mLever
+                    mLever, mComment
                    ]
   let rawParsersWrapped = map wrapWithPosition rawParsers
   let highParsers = [] :: [Parser TokenWithPosition]

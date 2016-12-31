@@ -142,6 +142,10 @@ test_popFromTape = do
   let tape5 = Tapes (-1) [TapeStack [scA], TapeStack [sbt, si1]]
   assertEqual exp5 $ popFromTape tape5 0
 
+test_mComment = do
+  let pos = ["`abc", "`", "``", "`\n"]
+  let neg = ["", "x `","\n", "\n`"]
+  testParser mComment pos neg
 
 {-
 test_ = do

@@ -25,9 +25,9 @@ data RuntimeState = RuntimeState
 data Tapes = Tapes Int [TapeStack] deriving (Show, Eq)
 data TapeStack = TapeStack [StackItem] deriving (Show, Eq)
 data StackItem = StackChar Char
-                | StackBool Bool
-                | StackInt Int
-                deriving (Show, Eq)
+               | StackBool Bool
+               | StackInt Int
+               deriving (Show, Eq)
 
 makeFields ''RuntimeState
 
@@ -70,7 +70,7 @@ pushStringToTape tapes idx xs = pushStringToTape newTapes idx (init xs)
   where newTapes = pushToTape tapes idx (StackChar $ last xs)
 
 popFromTape :: Tapes -> Int -> (Maybe StackItem, Tapes)
-popFromTape tapes@(Tapes baseIdx stacks) idx = updated --(item, Tapes baseIdx newStacks)
+popFromTape tapes@(Tapes baseIdx stacks) idx = updated
   where
     stack = stacks !! stackIndexToListIndex tapes idx
     items = itemsFromTapeStack stack
@@ -80,3 +80,10 @@ popFromTape tapes@(Tapes baseIdx stacks) idx = updated --(item, Tapes baseIdx ne
     updated
       | isNothing item = (Nothing, tapes)
       | otherwise = (item, Tapes baseIdx newStacks)
+
+isStackEmpty :: Tapes -> Int -> Bool
+isStackEmpty tapes@(Tapes baseIdx stacks) idx =
+  stackToList stack & null
+  where
+    stack = stacks !! stackIndexToListIndex tapes idx
+    stackToList (TapeStack x) = x

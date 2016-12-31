@@ -46,36 +46,71 @@ startingBalls (Parser.SourceCode tokens) = positions & map convertPosition & map
     , _orbStateTapeIndex = idx
     }
 
+verbosePrint :: String -> RuntimeStateMonad IO ()
+verbosePrint x = do
+  state <- get
+  when (state^.options.verbose) (io $ putStrLn x)
+
 destroyOrb :: (Int, Int) -> RuntimeStateMonad IO ()
 destroyOrb (x, y) = do
   orbs %= filter fn
   return ()
     where fn (OrbState (Position fx fy) _ _) = x /= fx && y /=fy
 
-invokeBuiltInPocketDimension :: String -> RuntimeStateMonad IO Bool
-invokeBuiltInPocketDimension name = do
+invokePrintCharacter :: Int -> RuntimeStateMonad IO ()
+invokePrintCharacter tapeIdx = do
+  sTapes <- use tapes
+  let (itemOpt, newTapes) = popFromTape sTapes tapeIdx
+  tapes .= newTapes
+  case itemOpt of
+    Nothing -> error "Cannot print character - no item on stack."
+    Just item -> case item of
+      StackChar x -> io $ putStr [x]
+      _ -> error "Cannot print character - top is not a char."
+
+invokePrintString :: Int -> RuntimeStateMonad IO ()
+invokePrintString tapeIdx = do
+  invokePrintCharacter tapeIdx
+  sTapes <- use tapes
+  if isStackEmpty sTapes tapeIdx
+    then io $ putStrLn ""
+    else invokePrintString tapeIdx
+
+invokeBuiltInPocketDimension :: String -> OrbState -> RuntimeStateMonad IO Bool
+invokeBuiltInPocketDimension name orbState = do
+  -- TODO
+  let tapeIdx = orbState^.tapeIndex
+  case name of
+    "pS" -> do
+      invokePrintString tapeIdx
+      return True
+    "pC" -> do
+      invokePrintCharacter tapeIdx
+      return True
+    _ -> return False
+
+invokeUserDefinedPocketDimension :: String -> OrbState -> RuntimeStateMonad IO Bool
+invokeUserDefinedPocketDimension name orbState = do
   -- TODO
   return False
 
-invokeUserDefinedPocketDimension :: String -> RuntimeStateMonad IO Bool
-invokeUserDefinedPocketDimension name = do
-  -- TODO
-  return False
-
-invokePocketDimension :: String -> RuntimeStateMonad IO ()
-invokePocketDimension name = do
-  res <- invokeBuiltInPocketDimension name <|> invokeUserDefinedPocketDimension name
+invokePocketDimension :: String -> OrbState -> RuntimeStateMonad IO ()
+invokePocketDimension name orbState = do
+  sTapes <- use tapes
+  io $ putStrLn $ "invokePocketDimension" ++ show orbState ++ show sTapes
+  res <- invokeBuiltInPocketDimension name orbState <|> invokeUserDefinedPocketDimension name orbState
   unless res (error $ "Pocket dimension \"" ++ name ++ "\" not found.")
   return ()
 
-interpretInstruction :: (Parser.TokenWithPosition, Int) -> RuntimeStateMonad IO ()
-interpretInstruction (Parser.TokenWithPosition pos token, tapeIdx) = do
+interpretInstruction :: (Parser.TokenWithPosition, Int, OrbState) -> RuntimeStateMonad IO ()
+interpretInstruction (Parser.TokenWithPosition pos token, orbIdx, orbState) = do
   -- TODO
   io $ putStrLn $ "Processing instruction " ++ show token
+  let tapeIdx = orbState^.tapeIndex
   case token of
     Parser.TokSpike -> destroyOrb $ Parser.filePosToPair pos
     (Parser.TokPush (Parser.TokString str)) -> tapes %= \t -> pushStringToTape t tapeIdx str
-    (Parser.TokPocketDimensionEntrance name) -> invokePocketDimension name
+    (Parser.TokPocketDimensionEntrance name) -> invokePocketDimension name orbState
     _ -> return ()
   return ()
 
@@ -95,19 +130,19 @@ moveOrb orb = OrbState {
     pX = orbPos^.x + signum velX
     pY = orbPos^.y + signum velY
 
-instructionsBehindBalls :: RuntimeStateMonad IO [(Parser.TokenWithPosition, Int)]
+instructionsBehindBalls :: RuntimeStateMonad IO [(Parser.TokenWithPosition, Int, OrbState)]
 instructionsBehindBalls = do
   state <- get
   sWorld <- use world
   sOrbs <- use orbs
   return $ sOrbs & orbsPositions & orbPositionsToTokens sWorld
     where
-      orbsPositions :: [OrbState] -> [(Position, Int)]
-      orbsPositions = mapInd $ \x idx-> (view position x, idx)
-      orbPositionsToTokens :: World -> [(Position, Int)] -> [(Parser.TokenWithPosition, Int)]
+      orbsPositions :: [OrbState] -> [(Position, Int, OrbState)]
+      orbsPositions = mapInd $ \x idx-> (view position x, idx, x)
+      orbPositionsToTokens :: World -> [(Position, Int, OrbState)] -> [(Parser.TokenWithPosition, Int, OrbState)]
       orbPositionsToTokens w xs = xs & map (orbPosToToken w) & catMaybes
-      orbPosToToken :: World -> (Position, Int) -> Maybe (Parser.TokenWithPosition, Int)
-      orbPosToToken w (pos, idx) = fmap (\x -> (x, idx)) (Map.lookup (positionToPair pos) (w^.World.map))
+      orbPosToToken :: World -> (Position, Int, OrbState) -> Maybe (Parser.TokenWithPosition, Int, OrbState)
+      orbPosToToken w (pos, idx, orbState) = fmap (\x -> (x, idx, orbState)) (Map.lookup (positionToPair pos) (w^.World.map))
 
 run :: RuntimeStateMonad IO ()
 run = do
@@ -135,7 +170,7 @@ interpret flags code = do
   let initialState = RuntimeState {
       _runtimeStateSourceCode = code
     , _runtimeStateWorld = createWorld code
-    , _runtimeStateOptions = RuntimeOptions { _verbose = verbose }
+    , _runtimeStateOptions = RuntimeOptions { _runtimeOptionsVerbose = verbose }
     , _runtimeStateOrbs = startingBalls code
     , _runtimeStateTapes = startingTapes
     }

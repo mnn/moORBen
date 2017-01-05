@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiWayIf #-}
 
 module Main(main) where
 
@@ -10,8 +11,8 @@ import           System.Environment
 import           System.Exit
 import           System.IO
 
-import qualified Runtime.MoorbenInterpreter    as IP
 import           Parser.MoorbenParser
+import qualified Runtime.MoorbenInterpreter as IP
 
 data MainFlag = Verbose | Version deriving (Show, Eq)
 
@@ -44,14 +45,18 @@ main :: IO ()
 main = do
   args <- getArgs
   options <- opts args
-  let verbose = options |> fst |> elem Verbose
-  let notMatched = options |> snd
-  when (null notMatched) $ crashWithMessage "Missing file name."
-  let fName = notMatched |> head
-  when verbose $ putStrLn $ "Input file name: " ++ fName
-  input <- readFile fName
-  when verbose $ putStrLn $ "File contents: \n" ++ input
-  let res = parseLang input
-  case res of
-    Left err   -> crashWithMessage $ "Failed to parse input file.\n" ++ show err
-    Right code -> IP.interpret (interpreterFlags options) code
+  let flags = options |> fst
+  let verbose = flags |> elem Verbose
+  let showVersionFlag = flags |> elem Version
+  if | showVersionFlag -> putStrLn "0.0.1"
+     | otherwise       -> do
+      let notMatched = options |> snd
+      when (null notMatched) $ crashWithMessage "Missing file name."
+      let fName = notMatched |> head
+      when verbose $ putStrLn $ "Input file name: " ++ fName
+      input <- readFile fName
+      when verbose $ putStrLn $ "File contents: \n" ++ input
+      let res = parseLang input
+      case res of
+        Left err   -> crashWithMessage $ "Failed to parse input file.\n" ++ show err
+        Right code -> IP.interpret (interpreterFlags options) code

@@ -1,5 +1,8 @@
-` line comment
+`  Hello world 
+` -------------
+
+` <- line comment
 o               ` orb starting position
 @"Hello world!" ` push string to the active stack
-%pS             ` enter pocket dimension called "pS" which is a built-in "function" for printing out a string 
+%pS             ` enter pocket dimension called "pS" which is a built-in "function" for printing out a string
 ^               ` spike - pops orb which terminates execution

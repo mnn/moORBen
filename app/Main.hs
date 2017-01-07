@@ -51,6 +51,7 @@ main = do
   if | showVersionFlag -> putStrLn "0.0.1"
      | otherwise       -> do
       let notMatched = options |> snd
+      when (length notMatched > 1) $ crashWithMessage "Only one source file is supported."
       when (null notMatched) $ crashWithMessage "Missing file name."
       let fName = notMatched |> head
       when verbose $ putStrLn $ "Input file name: " ++ fName
@@ -58,5 +59,5 @@ main = do
       when verbose $ putStrLn $ "File contents: \n" ++ input
       let res = parseLang input
       case res of
-        Left err   -> crashWithMessage $ "Failed to parse input file.\n" ++ show err
+        Left err   -> crashWithMessage $ "Failed to parse the input file.\n" ++ show err
         Right code -> IP.interpret (interpreterFlags options) code

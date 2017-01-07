@@ -49,7 +49,7 @@ startingBalls (Parser.SourceCode tokens) = positions & map convertPosition & map
 verbosePrint :: String -> RuntimeStateMonad IO ()
 verbosePrint x = do
   state <- get
-  when (state^.options.verbose) (io $ putStrLn x)
+  when (state^.options.verbose) $ io $ putStrLn x
 
 destroyOrb :: (Int, Int) -> RuntimeStateMonad IO ()
 destroyOrb (x, y) = do
@@ -57,37 +57,66 @@ destroyOrb (x, y) = do
   return ()
     where fn (OrbState (Position fx fy) _ _) = x /= fx && y /=fy
 
-invokePrintCharacter :: Int -> RuntimeStateMonad IO ()
-invokePrintCharacter tapeIdx = do
+invokePrintCharacter :: Int -> Bool -> Bool -> RuntimeStateMonad IO ()
+invokePrintCharacter tapeIdx newLine keep = do
   sTapes <- use tapes
   let (itemOpt, newTapes) = popFromTape sTapes tapeIdx
   tapes .= newTapes
   case itemOpt of
     Nothing -> error "Cannot print character - no item on stack."
-    Just item -> case item of
-      StackChar x -> io $ putStr [x]
-      _ -> error "Cannot print character - top is not a char."
+    Just item -> do
+      when keep $ tapes .= sTapes
+      case item of
+        StackChar x -> do
+          io $ putStr [x]
+          when newLine $ io $ putStrLn ""
+        _ -> error "Cannot print character - top is not a char."
 
-invokePrintString :: Int -> RuntimeStateMonad IO ()
-invokePrintString tapeIdx = do
-  invokePrintCharacter tapeIdx
+invokePrintInteger :: Int -> Bool -> Bool -> RuntimeStateMonad IO ()
+invokePrintInteger tapeIdx newLine keep = do
+  sTapes <- use tapes
+  let (itemOpt, newTapes) = popFromTape sTapes tapeIdx
+  tapes .= newTapes
+  case itemOpt of
+    Nothing -> error "Cannot print integer - no item on stack."
+    Just item -> do
+      when keep $ tapes .= sTapes
+      case item of
+        StackInt x -> do
+          io $ putStr $ show x
+          when newLine $ io $ putStrLn ""
+        _ -> error "Cannot print integer - top is not an integer."
+
+invokePrintString :: Int -> Bool -> Bool -> RuntimeStateMonad IO ()
+invokePrintString tapeIdx newLine keep = do
+  when keep $ error "\"keep\" argument is not supported."
+  invokePrintCharacter tapeIdx False False
   sTapes <- use tapes
   if isStackEmpty sTapes tapeIdx
-    then io $ putStrLn ""
-    else invokePrintString tapeIdx
+    then when newLine $ io $ putStrLn ""
+    else invokePrintString tapeIdx newLine keep
 
 invokeBuiltInPocketDimension :: String -> OrbState -> RuntimeStateMonad IO Bool
 invokeBuiltInPocketDimension name orbState = do
   -- TODO
   let tapeIdx = orbState^.tapeIndex
-  case name of
-    "pS" -> do
-      invokePrintString tapeIdx
-      return True
-    "pC" -> do
-      invokePrintCharacter tapeIdx
-      return True
-    _ -> return False
+  case lookup name fns of
+    Nothing -> return False
+    Just f  -> r $ f tapeIdx
+  where
+    r x = x >> return True
+    fns = [
+        ("pS",   \x -> invokePrintString x True False),
+        ("pSr",  \x -> invokePrintString x False False),
+        ("pC",   \x -> invokePrintCharacter x True False),
+        ("pCk",  \x -> invokePrintCharacter x True True),
+        ("pCr",  \x -> invokePrintCharacter x False False),
+        ("pCkr", \x -> invokePrintCharacter x False True),
+        ("pI",   \x -> invokePrintInteger x True False),
+        ("pIk",  \x -> invokePrintInteger x True True),
+        ("pIr",  \x -> invokePrintInteger x False False),
+        ("pIkr", \x -> invokePrintInteger x False True)
+      ]
 
 invokeUserDefinedPocketDimension :: String -> OrbState -> RuntimeStateMonad IO Bool
 invokeUserDefinedPocketDimension name orbState = do
@@ -97,7 +126,7 @@ invokeUserDefinedPocketDimension name orbState = do
 invokePocketDimension :: String -> OrbState -> RuntimeStateMonad IO ()
 invokePocketDimension name orbState = do
   sTapes <- use tapes
-  io $ putStrLn $ "invokePocketDimension" ++ show orbState ++ show sTapes
+  verbosePrint $ "invokePocketDimension" ++ show orbState ++ show sTapes
   res <- invokeBuiltInPocketDimension name orbState <|> invokeUserDefinedPocketDimension name orbState
   unless res (error $ "Pocket dimension \"" ++ name ++ "\" not found.")
   return ()
@@ -105,11 +134,14 @@ invokePocketDimension name orbState = do
 interpretInstruction :: (Parser.TokenWithPosition, Int, OrbState) -> RuntimeStateMonad IO ()
 interpretInstruction (Parser.TokenWithPosition pos token, orbIdx, orbState) = do
   -- TODO
-  io $ putStrLn $ "Processing instruction " ++ show token
+  verbosePrint $ "Processing instruction " ++ show token
   let tapeIdx = orbState^.tapeIndex
   case token of
     Parser.TokSpike -> destroyOrb $ Parser.filePosToPair pos
     (Parser.TokPush (Parser.TokString str)) -> tapes %= \t -> pushStringToTape t tapeIdx str
+    (Parser.TokPush (Parser.TokInt int)) -> tapes %= \t -> pushToTape t tapeIdx $ StackInt int
+    (Parser.TokPush Parser.TokTrue) -> tapes %= \t -> pushToTape t tapeIdx $ StackBool True
+    (Parser.TokPush Parser.TokFalse) -> tapes %= \t -> pushToTape t tapeIdx $ StackBool False
     (Parser.TokPocketDimensionEntrance name) -> invokePocketDimension name orbState
     _ -> return ()
   return ()
@@ -151,8 +183,8 @@ run = do
     orbs %= map moveOrb
 
     newOrbs <- use orbs
-    io $ putStrLn $ "new orbs: " ++ show newOrbs
-    io $ threadDelay $ 1 * 1000 * 1000
+    verbosePrint $ "new orbs: " ++ show newOrbs
+    -- io $ threadDelay $ 1 * 1000 * 1000
 
     instructions <- instructionsBehindBalls
     mapM_ interpretInstruction instructions
@@ -165,8 +197,9 @@ io = liftIO
 interpret :: [InterpreterFlag] -> Parser.SourceCode -> IO ()
 interpret flags code = do
   let verbose = Verbose `elem` flags
-  when verbose $ putStrLn "Input code:"
-  putStrLn $ "TODO interpreting: " ++ show code
+  when verbose $ do
+    putStrLn "Input code:"
+    putStrLn $ "interpreting: " ++ show code
   let initialState = RuntimeState {
       _runtimeStateSourceCode = code
     , _runtimeStateWorld = createWorld code
@@ -174,6 +207,6 @@ interpret flags code = do
     , _runtimeStateOrbs = startingBalls code
     , _runtimeStateTapes = startingTapes
     }
-  putStrLn $ "initialState = " ++ show initialState
+  when verbose $ putStrLn $ "initialState = " ++ show initialState
   execStateT run initialState
   return ()

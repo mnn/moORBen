@@ -18,6 +18,7 @@ import           Control.Monad.State
 import           Data.Map.Strict        (Map)
 import qualified Data.Map.Strict        as Map
 import           Data.Maybe
+import           Text.Read              (readMaybe)
 
 import qualified Parser.MoorbenParser   as Parser
 import           Runtime.OrbState
@@ -57,8 +58,8 @@ destroyOrb (x, y) = do
   return ()
     where fn (OrbState (Position fx fy) _ _) = x /= fx && y /=fy
 
-invokePrintCharacter :: Int -> Bool -> Bool -> RuntimeStateMonad IO ()
-invokePrintCharacter tapeIdx newLine keep = do
+invokePrintCharacter :: Bool -> Bool -> Int -> RuntimeStateMonad IO ()
+invokePrintCharacter newLine keep tapeIdx = do
   sTapes <- use tapes
   let (itemOpt, newTapes) = popFromTape sTapes tapeIdx
   tapes .= newTapes
@@ -72,8 +73,8 @@ invokePrintCharacter tapeIdx newLine keep = do
           when newLine $ io $ putStrLn ""
         _ -> error "Cannot print character - top is not a char."
 
-invokePrintInteger :: Int -> Bool -> Bool -> RuntimeStateMonad IO ()
-invokePrintInteger tapeIdx newLine keep = do
+invokePrintInteger :: Bool -> Bool -> Int -> RuntimeStateMonad IO ()
+invokePrintInteger newLine keep tapeIdx = do
   sTapes <- use tapes
   let (itemOpt, newTapes) = popFromTape sTapes tapeIdx
   tapes .= newTapes
@@ -87,14 +88,21 @@ invokePrintInteger tapeIdx newLine keep = do
           when newLine $ io $ putStrLn ""
         _ -> error "Cannot print integer - top is not an integer."
 
-invokePrintString :: Int -> Bool -> Bool -> RuntimeStateMonad IO ()
-invokePrintString tapeIdx newLine keep = do
+invokePrintString :: Bool -> Bool -> Int -> RuntimeStateMonad IO ()
+invokePrintString newLine keep tapeIdx = do
   when keep $ error "\"keep\" argument is not supported."
-  invokePrintCharacter tapeIdx False False
+  invokePrintCharacter False False tapeIdx
   sTapes <- use tapes
   if isStackEmpty sTapes tapeIdx
     then when newLine $ io $ putStrLn ""
-    else invokePrintString tapeIdx newLine keep
+    else invokePrintString newLine keep tapeIdx
+
+invokeReadInteger :: Bool -> Int -> RuntimeStateMonad IO ()
+invokeReadInteger allowFail tapeIdx = do
+  input <- io getLine
+  case (readMaybe input :: Maybe Int) of
+    Nothing  -> unless allowFail $ invokeReadInteger allowFail tapeIdx
+    Just num -> tapes %= \t -> pushToTape t tapeIdx $ StackInt num
 
 invokeBuiltInPocketDimension :: String -> OrbState -> RuntimeStateMonad IO Bool
 invokeBuiltInPocketDimension name orbState = do
@@ -106,16 +114,17 @@ invokeBuiltInPocketDimension name orbState = do
   where
     r x = x >> return True
     fns = [
-        ("pS",   \x -> invokePrintString x True False),
-        ("pSr",  \x -> invokePrintString x False False),
-        ("pC",   \x -> invokePrintCharacter x True False),
-        ("pCk",  \x -> invokePrintCharacter x True True),
-        ("pCr",  \x -> invokePrintCharacter x False False),
-        ("pCkr", \x -> invokePrintCharacter x False True),
-        ("pI",   \x -> invokePrintInteger x True False),
-        ("pIk",  \x -> invokePrintInteger x True True),
-        ("pIr",  \x -> invokePrintInteger x False False),
-        ("pIkr", \x -> invokePrintInteger x False True)
+        ("pS",   invokePrintString True False),
+        ("pSr",  invokePrintString False False),
+        ("pC",   invokePrintCharacter True False),
+        ("pCk",  invokePrintCharacter True True),
+        ("pCr",  invokePrintCharacter False False),
+        ("pCkr", invokePrintCharacter False True),
+        ("pI",   invokePrintInteger True False),
+        ("pIk",  invokePrintInteger True True),
+        ("pIr",  invokePrintInteger False False),
+        ("pIkr", invokePrintInteger False True),
+        ("rI",   invokeReadInteger False)
       ]
 
 invokeUserDefinedPocketDimension :: String -> OrbState -> RuntimeStateMonad IO Bool

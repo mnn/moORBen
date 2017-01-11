@@ -162,9 +162,25 @@ mComment = do
   return $ TokComment str
 
 -- Phase 2
--- mPortalTwoWay :: Parser Token
--- mPortalEntrance :: Parser Token
--- mPortalExit :: Parser Token
+mPortalTwoWay :: Parser Token
+mPortalTwoWay = do
+  char '-'
+  id <- idParser
+  return $ TokPortalTwoWay id
+  
+mPortalEntrance :: Parser Token
+mPortalEntrance = do
+  char '_'
+  id <- idParser
+  return $ TokPortalEntrance id
+  
+mPortalExit :: Parser Token
+mPortalExit = do
+  char '~'
+  id <- idParser
+  return $ TokPortalExit id
+
+-- Phase 3
 -- mPortalPocketDimensionStart :: Parser Token
 -- mPortalPocketDimensionEnd :: Parser Token
 -- mDuplicate :: Parser Token
@@ -175,7 +191,7 @@ mLang = do
   whiteSpaces
   let rawParsers = [
                     mPush, mPop, mSpike, mOrb, mPortalPocketDimensionEntrance, mComparator,
-                    mLever, mComment
+                    mLever, mComment, mPortalTwoWay, mPortalEntrance, mPortalExit
                    ]
   let rawParsersWrapped = map wrapWithPosition rawParsers
   let highParsers = [] :: [Parser TokenWithPosition]

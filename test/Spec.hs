@@ -163,6 +163,24 @@ test_mComment = do
   let neg = ["", "x `","\n", "\n`"]
   testParser mComment pos neg
 
+test_mPortalTwoWay :: IO ()
+test_mPortalTwoWay = do
+  let pos = ["-A", "-abc", "-c"]
+  let neg = ["-", "", "- ", "--", "-1", "abc", "_A", "~A"]
+  testParser mPortalTwoWay pos neg
+
+test_mPortalEntrance :: IO ()
+test_mPortalEntrance = do
+  let pos = ["_A", "_abc", "_c"]
+  let neg = ["_", "", "_ ", "__", "_1", "abc", "-A", "~A"]
+  testParser mPortalEntrance pos neg
+
+test_mPortalExit :: IO ()
+test_mPortalExit = do
+  let pos = ["~A", "~abc", "~c"]
+  let neg = ["~", "", "~ ", "~~", "~1", "abc", "-A", "_A"]
+  testParser mPortalExit pos neg
+
 {-
 test_ = do
   let pos = [""]

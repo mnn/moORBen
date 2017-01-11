@@ -152,8 +152,9 @@ interpretInstruction (Parser.TokenWithPosition pos token, orbIdx, orbState) = do
     (Parser.TokPush Parser.TokTrue) -> tapes %= \t -> pushToTape t tapeIdx $ StackBool True
     (Parser.TokPush Parser.TokFalse) -> tapes %= \t -> pushToTape t tapeIdx $ StackBool False
     (Parser.TokPocketDimensionEntrance name) -> invokePocketDimension name orbState
-    _ -> return ()
-  return ()
+    _ -> do
+      io $ putStrLn $ "Unknown instruction: " ++ show token
+      return ()
 
 moveOrb :: OrbState -> OrbState
 moveOrb orb = OrbState {

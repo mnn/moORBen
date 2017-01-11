@@ -27,60 +27,73 @@ testParser parser posStr negStr = do
   mapM_ positive posStr
   mapM_ negative negStr
 
+test_parseWhitespace' :: IO ()
 test_parseWhitespace' = do
   let pos = ["", " ", "\t", "\n", "\r\n", "  \r\n  ", "   \t   \r\n  \t  \n   \r  \t "]
   let neg = ["x",  " x",  "x ",  " x ",  "\t_\t"]
   testParser whiteSpaces pos neg
 
+test_parseString :: IO ()
 test_parseString = do
   let pos =  ["\"abc\"", "\"x\"", "\" \"", "\"\""]
   let neg = ["", "a", "aaa", " w ", "\"", "\"\"\""]
   testParser mString pos neg
 
+test_parseInt :: IO ()
 test_parseInt = do
-  let pos = ["1", "123", "047", "11111111"]
-  let neg = ["", "a1", "1a", "0w1", " 5", "4 "]
+  let pos = ["1", "123", "047", "11111111", "-1"]
+  let neg = ["", "a1", "1a", "0w1", " 5", "4 ", "--1"]
   testParser mInt pos neg
 
+test_parseBool :: IO ()
 test_parseBool = do
   let pos = ["T", "F", "True", "False"]
   let neg = ["", " ", ""]
   testParser mBool pos neg
 
+test_parsePush :: IO ()
 test_parsePush = do
-  let pos = ["@1", "@0", "@789564", "@T", "@True", "@F", "@False"]
+  let pos = ["@1", "@0", "@789564", "@T", "@True", "@F", "@False", "@-1"]
   let neg = ["1", "", " ", "@", "Q", "\"\""]
   testParser mPush pos neg
 
+test_parsePop :: IO ()
 test_parsePop = do
   let pos = ["$", "$1", "$999"]
   let neg = ["", "$a", "a", " "]
   testParser mPop pos neg
 
+test_parseSpike :: IO ()
 test_parseSpike = testParser mSpike ["^"] ["", "-", "a", "0"]
 
+test_parseOrb :: IO ()
 test_parseOrb = testParser mOrb ["o"] ["", "-", "a", "0"]
 
+test_parsePocketDimensionEntrance :: IO ()
 test_parsePocketDimensionEntrance = do
   let pos = ["%a", "%pS", "%pC", "%ppPPxasldjlskajrWRWEKLJRKWEj"]
   let neg = ["", "a", "%%", "%", "aaa"]
   testParser mPortalPocketDimensionEntrance pos neg
 
+test_operatorParser :: IO ()
 test_operatorParser = do
   let pos = ["<", ">", "<=", ">=", "=", "!"]
   let neg = ["", "a", "_", "aaa"]
   testParser operatorParser pos neg
 
+test_mComparator :: IO ()
 test_mComparator = do
   let pos = ["?<", "?>", "?<=", "?>=", "?=", "?!"]
   let neg = ["", "??", "?a", "?_", "a", "0", "aaa"]
   testParser mComparator pos neg
 
+test_mLever :: IO ()
 test_mLever = do
   let pos = ["/", "/?", "/abc", "\\", "\\?", "\\abc"]
   let neg = ["//", "\\\\", "", "_", "?", "abc"]
   testParser mLever pos neg
 
+test_ensureTapeIndexIsValid :: IO ()
 test_ensureTapeIndexIsValid = do
   assertEqual (Tapes 0 [TapeStack []]) startingTapes
 
@@ -97,6 +110,7 @@ test_ensureTapeIndexIsValid = do
   assertEqual tapes3e tapes3
 
 
+test_pushToTape :: IO ()
 test_pushToTape = do
   let tape1 = Tapes 0 [TapeStack []]
   let sbt = StackBool True
@@ -111,12 +125,13 @@ test_pushToTape = do
   let tape3 = Tapes 1 [TapeStack [si1],TapeStack [sbt]]
   let tape3e = Tapes 1 [TapeStack [si1],TapeStack [scA, sbt]]
   assertEqual tape3e $ pushToTape tape3 2 scA
-  
+
   let tape4 = Tapes 0 [TapeStack []]
   let tape4e = Tapes 0 [TapeStack [StackChar 'A', StackChar 'B']]
   assertEqual tape4e $ pushStringToTape tape4 0 "AB"
 
 
+test_popFromTape :: IO ()
 test_popFromTape = do
   let sbt = StackBool True
   let si1 = StackInt 1
@@ -142,6 +157,7 @@ test_popFromTape = do
   let tape5 = Tapes (-1) [TapeStack [scA], TapeStack [sbt, si1]]
   assertEqual exp5 $ popFromTape tape5 0
 
+test_mComment :: IO ()
 test_mComment = do
   let pos = ["`abc", "`", "``", "`\n"]
   let neg = ["", "x `","\n", "\n`"]

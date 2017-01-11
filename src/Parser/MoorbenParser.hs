@@ -71,8 +71,9 @@ stringCharacter = fmap return nonEscape <|> escape
 
 intParser :: Parser Int
 intParser = do
+  sign <- option "" $ string "-"
   d <- many1 digit
-  return $ read d
+  return $ read $ sign ++ d
 
 idParser :: Parser String
 idParser = many1 letter

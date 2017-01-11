@@ -1,3 +1,12 @@
+` Test all types of output pocket dimensions.
+
+` pC - print character
+` pS - print string (whole stack must contain only characters)
+` pI - print integer
+` All dimensions pop printed elements by default.
+` "k"eep variant keeps printed elements on a stack (string is not supported).
+` "r"aw variant doesn't output new line.
+
 o
 
 @"x"

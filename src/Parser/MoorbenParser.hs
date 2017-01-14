@@ -36,7 +36,7 @@ data Token = TokString String
            | TokLeverStatic LeverBounceDirection
            | TokLeverTest LeverBounceDirection
            | TokLeverRemote LeverBounceDirection String
-           | TokDuplicate Int
+           | TokDuplicate Int Int
            | TokDuplicateToOther Int
            | TokComment String
            deriving (Show, Eq)
@@ -68,6 +68,11 @@ nonEscape = noneOf "\\\"\0\n\r\v\t\b\f"
 
 stringCharacter :: Parser String
 stringCharacter = fmap return nonEscape <|> escape
+
+natParser :: Parser Int
+natParser = do
+  d <- many1 digit
+  return $ read $ d
 
 intParser :: Parser Int
 intParser = do
@@ -161,19 +166,18 @@ mComment = do
   str <- manyTill anyChar (void newline <|> eof)
   return $ TokComment str
 
--- Phase 2
 mPortalTwoWay :: Parser Token
 mPortalTwoWay = do
   char '-'
   id <- idParser
   return $ TokPortalTwoWay id
-  
+
 mPortalEntrance :: Parser Token
 mPortalEntrance = do
   char '_'
   id <- idParser
   return $ TokPortalEntrance id
-  
+
 mPortalExit :: Parser Token
 mPortalExit = do
   char '~'
@@ -181,17 +185,32 @@ mPortalExit = do
   return $ TokPortalExit id
 
 -- Phase 3
+mDuplicateNItems :: Parser Token
+mDuplicateNItems = do
+  char '='
+  amount <- option 1 natParser
+  dirChar <- optionMaybe $ char '{' <|> char '}'
+  let dirCoef = case dirChar of
+                  Just '{' -> -1
+                  Just '}' -> 1
+                  Nothing  -> 0
+  stackOffsetRaw <- option 0 natParser
+  let stackOffset = stackOffsetRaw * dirCoef
+  return $ TokDuplicate stackOffset amount
+
+-- Phase 4
+-- advanced duplicate
+-- builtIn operations (e.g. ":-")
+-- mMoveTape :: Parser Token
 -- mPortalPocketDimensionStart :: Parser Token
 -- mPortalPocketDimensionEnd :: Parser Token
--- mDuplicate :: Parser Token
--- mMoveTape :: Parser Token
 
 mLang :: Parser SourceCode
 mLang = do
   whiteSpaces
   let rawParsers = [
                     mPush, mPop, mSpike, mOrb, mPortalPocketDimensionEntrance, mComparator,
-                    mLever, mComment, mPortalTwoWay, mPortalEntrance, mPortalExit
+                    mLever, mComment, mPortalTwoWay, mPortalEntrance, mPortalExit, mDuplicateNItems
                    ]
   let rawParsersWrapped = map wrapWithPosition rawParsers
   let highParsers = [] :: [Parser TokenWithPosition]

@@ -157,6 +157,35 @@ test_popFromTape = do
   let tape5 = Tapes (-1) [TapeStack [scA], TapeStack [sbt, si1]]
   assertEqual exp5 $ popFromTape tape5 0
 
+test_popNFromTape :: IO ()
+test_popNFromTape = do
+  let sbt = StackBool True
+  let si1 = StackInt 1
+  let scA = StackChar 'A'
+
+  let exp1 = ([], Tapes 0 [TapeStack []])
+  let tape1 = Tapes 0 [TapeStack []]
+  assertEqual exp1 $ popNFromTape tape1 0 0
+
+  let exp2 = ([sbt, si1, scA], Tapes 0 [TapeStack []])
+  let tape2 = Tapes 0 [TapeStack [sbt, si1, scA]]
+  assertEqual exp2 $ popNFromTape tape2 0 3
+
+  let exp3 = ([sbt, si1], Tapes 0 [TapeStack [scA]])
+  let tape3 = Tapes 0 [TapeStack [sbt, si1, scA]]
+  assertEqual exp3 $ popNFromTape tape3 0 2
+
+test_pushListToTape :: IO ()
+test_pushListToTape = do
+  let sbt = StackBool True
+  let si1 = StackInt 1
+  let si2 = StackInt 2
+  let scA = StackChar 'A'
+
+  let exp1 = Tapes 0 [TapeStack [sbt, si1, scA, si2]]
+  let tape1 = Tapes 0 [TapeStack [si2]]
+  assertEqual exp1 $ pushListToTape tape1 0 [scA, si1, sbt]
+
 test_mComment :: IO ()
 test_mComment = do
   let pos = ["`abc", "`", "``", "`\n"]
@@ -180,6 +209,12 @@ test_mPortalExit = do
   let pos = ["~A", "~abc", "~c"]
   let neg = ["~", "", "~ ", "~~", "~1", "abc", "-A", "_A"]
   testParser mPortalExit pos neg
+
+test_mDuplicateNItems :: IO ()
+test_mDuplicateNItems = do
+  let pos = ["=", "={", "=}", "=3", "=2{1", "={1"]
+  let neg = ["==", "{", "}=", "", " =", "1=", "={{", "=-1", "={-1"]
+  testParser mDuplicateNItems pos neg
 
 {-
 test_ = do

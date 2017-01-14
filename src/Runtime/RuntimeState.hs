@@ -8,6 +8,7 @@ module Runtime.RuntimeState where
 
 import           Control.Lens
 import           Data.Maybe
+import           Data.Tuple             (swap)
 
 import           Parser.MoorbenParser
 import           Runtime.OrbState
@@ -57,12 +58,16 @@ stackIndexToListIndex :: Tapes -> Int -> Int
 stackIndexToListIndex (Tapes baseIdx _) stackIdx = stackIdx - baseIdx
 
 pushToTape :: Tapes -> Int -> StackItem -> Tapes
-pushToTape tapes@(Tapes baseIdx stacks) idx item = Tapes baseIdx newStacks
-  where
-    newStacks :: [TapeStack]
-    newStacks = stacks & ix (stackIndexToListIndex tapes idx) %~ update
-    update :: TapeStack -> TapeStack
-    update (TapeStack items) = TapeStack (item:items)
+pushToTape tapes@(Tapes baseIdx stacks) idx item = Tapes baseIdx newStacks where
+  newStacks :: [TapeStack]
+  newStacks = stacks & ix (stackIndexToListIndex tapes idx) %~ update
+  update :: TapeStack -> TapeStack
+  update (TapeStack items) = TapeStack (item:items)
+
+pushListToTape :: Tapes -> Int -> [StackItem] -> Tapes
+pushListToTape tapes@(Tapes baseIdx stacks) idx toPush = newTapes where
+  newTapes = foldl f tapes toPush
+  f acc = pushToTape acc idx
 
 pushStringToTape :: Tapes -> Int -> String -> Tapes
 pushStringToTape tapes _ [] = tapes
@@ -70,20 +75,42 @@ pushStringToTape tapes idx xs = pushStringToTape newTapes idx (init xs)
   where newTapes = pushToTape tapes idx (StackChar $ last xs)
 
 popFromTape :: Tapes -> Int -> (Maybe StackItem, Tapes)
-popFromTape tapes@(Tapes baseIdx stacks) idx = updated
-  where
-    stack = stacks !! stackIndexToListIndex tapes idx
-    items = itemsFromTapeStack stack
-    item = listToMaybe items
-    newStacks = stacks & ix (stackIndexToListIndex tapes idx) %~ removeHeadFromStack
-    removeHeadFromStack (TapeStack (_:xs)) = TapeStack xs
-    updated
-      | isNothing item = (Nothing, tapes)
-      | otherwise = (item, Tapes baseIdx newStacks)
+popFromTape tapes@(Tapes baseIdx stacks) idx = updated where
+  stack = stacks !! stackIndexToListIndex tapes idx
+  items = itemsFromTapeStack stack
+  item = listToMaybe items
+  newStacks = stacks & ix (stackIndexToListIndex tapes idx) %~ removeHeadFromStack
+  removeHeadFromStack (TapeStack (_:xs)) = TapeStack xs
+  updated
+    | isNothing item = (Nothing, tapes)
+    | otherwise = (item, Tapes baseIdx newStacks)
+
+popNFromTape :: Tapes -> Int -> Int -> ([StackItem], Tapes)
+popNFromTape tapes@(Tapes baseIdx stacks) idx n = res where
+  res = swap $ foldl f (tapes, []) [1..n]
+  f (tps, res) _ = let
+    (itemOpt, newTps) = popFromTape tps idx
+    newRes = res ++ maybeToList itemOpt
+      in (newTps, newRes)
 
 isStackEmpty :: Tapes -> Int -> Bool
-isStackEmpty tapes@(Tapes baseIdx stacks) idx =
-  stackToList stack & null
+isStackEmpty tapes idx = getStackLength tapes idx == 0
+
+getStackLength :: Tapes -> Int -> Int
+getStackLength tapes@(Tapes baseIdx stacks) idx =
+  stackToList stack & length
   where
     stack = stacks !! stackIndexToListIndex tapes idx
     stackToList (TapeStack x) = x
+
+isStackChar :: StackItem -> Bool
+isStackChar (StackChar _) = True
+isStackChar _             = False
+
+isStackInt :: StackItem -> Bool
+isStackInt (StackInt _) = True
+isStackInt _            = False
+
+isStackBool :: StackItem -> Bool
+isStackBool (StackBool _) = True
+isStackBool _             = False

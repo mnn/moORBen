@@ -130,6 +130,7 @@ invokeBuiltInPocketDimension name orbState = do
 invokeUserDefinedPocketDimension :: String -> OrbState -> RuntimeStateMonad IO Bool
 invokeUserDefinedPocketDimension name orbState = do
   -- TODO
+  io $ putStrLn $ "invokeUserDefinedPocketDimension()" ++ name ++ " not implemented yet"
   return False
 
 invokePocketDimension :: String -> OrbState -> RuntimeStateMonad IO ()
@@ -138,6 +139,62 @@ invokePocketDimension name orbState = do
   verbosePrint $ "invokePocketDimension" ++ show orbState ++ show sTapes
   res <- invokeBuiltInPocketDimension name orbState <|> invokeUserDefinedPocketDimension name orbState
   unless res (error $ "Pocket dimension \"" ++ name ++ "\" not found.")
+  return ()
+
+assertNumberOfItemsOnStack :: Int -> Int -> RuntimeStateMonad IO ()
+assertNumberOfItemsOnStack tapeIdx expected = do
+  tps <- use tapes
+  when (getStackLength tps tapeIdx < expected) $ error $ "Expected " ++ show expected ++ " item(s) on stack."
+
+assertItem :: StackItem -> (StackItem -> Bool) -> String -> RuntimeStateMonad IO ()
+assertItem item test errMsg = unless (test item) $ error errMsg
+
+assertItemIsBool :: StackItem -> RuntimeStateMonad IO Bool
+assertItemIsBool i = do
+  assertItem i isStackBool $ "Expected item " ++ show i ++ " to be boolean."
+  return $ case i of (StackBool x) -> x
+
+popFromTapeOrError :: Int -> RuntimeStateMonad IO StackItem 
+popFromTapeOrError tapeIdx = do
+  tps <- use tapes
+  let (itemOpt, newTapes) = popFromTape tps tapeIdx
+  tapes .= newTapes
+  return $ case itemOpt of
+    Nothing -> error "Attempted to pop an item from empty stack."
+    Just x -> x
+
+interpretComparator :: Int -> Parser.RelationalOperator -> RuntimeStateMonad IO () 
+interpretComparator tapeIdx op = do
+  assertNumberOfItemsOnStack tapeIdx 2
+  -- TODO: "if not error" after error processing is improved
+  a <- popFromTapeOrError tapeIdx
+  b <- popFromTapeOrError tapeIdx
+  -- TODO: "if not error" after error processing is improved
+  case op of
+    Parser.RelEqual -> tapes %= \t -> pushToTape t tapeIdx $ StackBool $ a == b
+    -- TODO: rest of operators
+    _ -> io $ putStrLn $ "Unknown operator: " ++ show op
+
+leverVelocity :: Int
+leverVelocity = 3
+
+getBounceSign :: Parser.LeverBounceDirection -> Int
+getBounceSign Parser.BounceLeft = -1
+getBounceSign Parser.BounceRight = 1
+
+interpretLever :: Int -> Parser.LeverBounceDirection -> Int -> RuntimeStateMonad IO ()
+interpretLever tapeIdx dir orbIdx = do
+  p <- popFromTapeOrError tapeIdx
+  -- TODO: "if not error" after error processing is improved
+  b <- assertItemIsBool p
+  -- TODO: "if not error" after error processing is improved
+  when b $ orbs.ix orbIdx.velocity.x .= leverVelocity * getBounceSign dir
+
+interpretDuplicate :: Int -> Int -> Int -> RuntimeStateMonad IO ()
+interpretDuplicate tapeIdx stackOffset amount = do
+  let targetTapeIdx = tapeIdx + stackOffset
+  (toPush, _) <- fmap (\t -> popNFromTape t tapeIdx amount) (use tapes)
+  tapes %= \tps -> pushListToTape tps targetTapeIdx (reverse toPush)
   return ()
 
 interpretInstruction :: (Parser.TokenWithPosition, Int, OrbState) -> RuntimeStateMonad IO ()
@@ -152,6 +209,10 @@ interpretInstruction (Parser.TokenWithPosition pos token, orbIdx, orbState) = do
     (Parser.TokPush Parser.TokTrue) -> tapes %= \t -> pushToTape t tapeIdx $ StackBool True
     (Parser.TokPush Parser.TokFalse) -> tapes %= \t -> pushToTape t tapeIdx $ StackBool False
     (Parser.TokPocketDimensionEntrance name) -> invokePocketDimension name orbState
+    (Parser.TokComparator op) -> interpretComparator tapeIdx op
+    (Parser.TokLeverTest dir) -> interpretLever tapeIdx dir orbIdx
+    Parser.TokOrb -> return ()
+    (Parser.TokDuplicate stackOffset amount) -> interpretDuplicate tapeIdx stackOffset amount
     _ -> do
       io $ putStrLn $ "Unknown instruction: " ++ show token
       return ()
@@ -169,8 +230,8 @@ moveOrb orb = OrbState {
     oldVelY = orb^.velocity.y
     velY = if oldVelY >= 0 then 1 else oldVelY - 1
     orbPos = orb^.position
-    pX = orbPos^.x + signum velX
-    pY = orbPos^.y + signum velY
+    pX = orbPos^.x + signum oldVelX
+    pY = orbPos^.y + if oldVelX == 0 then signum oldVelY else 0
 
 instructionsBehindBalls :: RuntimeStateMonad IO [(Parser.TokenWithPosition, Int, OrbState)]
 instructionsBehindBalls = do
@@ -194,7 +255,7 @@ run = do
 
     newOrbs <- use orbs
     verbosePrint $ "new orbs: " ++ show newOrbs
-    -- io $ threadDelay $ 1 * 1000 * 1000
+--     io $ threadDelay $ 1 * 1000 * 500
 
     instructions <- instructionsBehindBalls
     mapM_ interpretInstruction instructions

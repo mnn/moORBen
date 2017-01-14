@@ -2,15 +2,19 @@
 ` ---------------------
 ` Description: https://esolangs.org/wiki/Truth-machine
 
-    o
-    %rI
-    @0
-    ?=
-    /?
- %pI$
- ^  @1
-    ?=
-    /?
- ~A ^
- %pIk
- _A
+   o
+   %rI
+   =
+   @0
+   ?=
+   /?
+%pI
+^
+   =
+   @1
+   ?=
+   /?
+   ^
+~A
+%pIk
+_A

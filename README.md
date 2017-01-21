@@ -20,4 +20,4 @@ o               ` orb starting position
 
 Other programs
 -------------
-[Truth machine](blob/master/res/TruthMachine.mrb)
+[Truth machine](res/TruthMachine.mrb)

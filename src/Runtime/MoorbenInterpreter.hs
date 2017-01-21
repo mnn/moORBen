@@ -197,6 +197,13 @@ interpretDuplicate tapeIdx stackOffset amount = do
   tapes %= \tps -> pushListToTape tps targetTapeIdx (reverse toPush)
   return ()
 
+usePortal :: String -> Int -> OrbState -> RuntimeStateMonad IO ()
+usePortal name orbIdx orbState = do
+  exits <- use portalExits
+  case lookup name exits of
+    Nothing -> error $ "Failed to find exit of a portal named \"" ++ name ++ "\"."
+    Just pos -> orbs.ix orbIdx.position .= pos
+
 interpretInstruction :: (Parser.TokenWithPosition, Int, OrbState) -> RuntimeStateMonad IO ()
 interpretInstruction (Parser.TokenWithPosition pos token, orbIdx, orbState) = do
   -- TODO
@@ -213,6 +220,8 @@ interpretInstruction (Parser.TokenWithPosition pos token, orbIdx, orbState) = do
     (Parser.TokLeverTest dir) -> interpretLever tapeIdx dir orbIdx
     Parser.TokOrb -> return ()
     (Parser.TokDuplicate stackOffset amount) -> interpretDuplicate tapeIdx stackOffset amount
+    (Parser.TokPortalEntrance name) -> usePortal name orbIdx orbState
+    (Parser.TokPortalTwoWay name) -> usePortal name orbIdx orbState
     _ -> do
       io $ putStrLn $ "Unknown instruction: " ++ show token
       return ()
@@ -247,6 +256,13 @@ instructionsBehindBalls = do
       orbPosToToken :: World -> (Position, Int, OrbState) -> Maybe (Parser.TokenWithPosition, Int, OrbState)
       orbPosToToken w (pos, idx, orbState) = fmap (\x -> (x, idx, orbState)) (Map.lookup (positionToPair pos) (w^.World.map))
 
+genPortalExitsMap :: Parser.SourceCode -> [(String, Position)]
+genPortalExitsMap (Parser.SourceCode tokens) = exitsCombined & map conv where
+  simpleExits = [ (name, pos) | Parser.TokenWithPosition pos (Parser.TokPortalExit name) <- tokens]
+  twoWays = [ (name, pos) | Parser.TokenWithPosition pos (Parser.TokPortalTwoWay name) <- tokens]
+  exitsCombined = simpleExits ++  twoWays
+  conv (name, pos) = (name, convertPosition pos)
+
 run :: RuntimeStateMonad IO ()
 run = do
   gotOrbs <- fmap (not . null) (use orbs)
@@ -277,6 +293,7 @@ interpret flags code = do
     , _runtimeStateOptions = RuntimeOptions { _runtimeOptionsVerbose = verbose }
     , _runtimeStateOrbs = startingBalls code
     , _runtimeStateTapes = startingTapes
+    , _runtimeStatePortalExits = genPortalExitsMap code
     }
   when verbose $ putStrLn $ "initialState = " ++ show initialState
   execStateT run initialState

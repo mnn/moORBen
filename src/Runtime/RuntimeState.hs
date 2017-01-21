@@ -12,15 +12,17 @@ import           Data.Tuple             (swap)
 
 import           Parser.MoorbenParser
 import           Runtime.OrbState
+import           Runtime.Position
 import           Runtime.RuntimeOptions
 import           Runtime.World
 
 data RuntimeState = RuntimeState
-  { _runtimeStateSourceCode :: SourceCode
-  , _runtimeStateOptions    :: RuntimeOptions
-  , _runtimeStateOrbs       :: [OrbState]
-  , _runtimeStateTapes      :: Tapes
-  , _runtimeStateWorld      :: World
+  { _runtimeStateSourceCode  :: SourceCode
+  , _runtimeStateOptions     :: RuntimeOptions
+  , _runtimeStateOrbs        :: [OrbState]
+  , _runtimeStateTapes       :: Tapes
+  , _runtimeStateWorld       :: World
+  , _runtimeStatePortalExits :: [(String, Position)]
   } deriving (Show, Eq)
 
 data Tapes = Tapes Int [TapeStack] deriving (Show, Eq)

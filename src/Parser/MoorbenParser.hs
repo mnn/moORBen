@@ -1,14 +1,24 @@
 module Parser.MoorbenParser where
 
+import           Control.Arrow                 (first)
 import           Control.Monad
 import           Data.Function
 import           Data.List
+import           Data.List.Utils
 import           Data.Maybe
 import           Flow
 import           Text.Parsec.Pos
 import           Text.ParserCombinators.Parsec hiding (spaces)
 
-data GenericOperation = OpAdd deriving (Show, Eq)
+data GenericOperation = OpAdd
+                      | OpSubtract
+                      | OpNegate
+                      | OpMultiply
+                      | OpPower
+                      | OpDivide
+                      | OpIntDivide
+                      | OpModulo
+                        deriving (Show, Eq)
 data RelationalOperator = RelLess
                         | RelMore
                         | RelMoreOrEqual
@@ -39,6 +49,7 @@ data Token = TokString String
            | TokDuplicate Int Int
            | TokDuplicateToOther Int
            | TokComment String
+           | TokMoveStackIndex Int
            deriving (Show, Eq)
 data FilePos = FilePos { x :: Int, y :: Int } deriving (Show, Eq)
 data TokenWithPosition = TokenWithPosition FilePos Token deriving (Show, Eq)
@@ -66,13 +77,26 @@ escape = do
 nonEscape :: Parser Char
 nonEscape = noneOf "\\\"\0\n\r\v\t\b\f"
 
+unescapeString :: String -> String
+unescapeString input = foldl f input replaces where
+  f acc (x, y) = replace x y acc
+  replaces = [("\\", "\\")
+             ,("0", "\\0")
+             ,("n", "\\n")
+             ,("r", "\\r")
+             ,("v", "\\v")
+             ,("t", "\\t")
+             ,("b", "\\b")
+             ,("f", "\\f")
+             ] & map (first ("\\" ++))
+
 stringCharacter :: Parser String
 stringCharacter = fmap return nonEscape <|> escape
 
 natParser :: Parser Int
 natParser = do
   d <- many1 digit
-  return $ read $ d
+  return $ read d
 
 intParser :: Parser Int
 intParser = do
@@ -88,7 +112,7 @@ mString = do
   char '"'
   str <- many stringCharacter
   char '"'
-  return $ TokString $ concat str
+  return $ TokString $ concat str & unescapeString
 
 mInt :: Parser Token
 mInt = do
@@ -184,24 +208,54 @@ mPortalExit = do
   id <- idParser
   return $ TokPortalExit id
 
--- Phase 3
+calcDirCoef :: Maybe Char -> Int
+calcDirCoef (Just '{') = -1
+calcDirCoef (Just '}') = 1
+calcDirCoef Nothing    = 0
+
 mDuplicateNItems :: Parser Token
 mDuplicateNItems = do
   char '='
   amount <- option 1 natParser
   dirChar <- optionMaybe $ char '{' <|> char '}'
-  let dirCoef = case dirChar of
-                  Just '{' -> -1
-                  Just '}' -> 1
-                  Nothing  -> 0
   stackOffsetRaw <- option 0 natParser
-  let stackOffset = stackOffsetRaw * dirCoef
+  let stackOffset = stackOffsetRaw * calcDirCoef dirChar
   return $ TokDuplicate stackOffset amount
 
--- Phase 4
--- advanced duplicate
--- builtIn operations (e.g. ":-")
--- mMoveTape :: Parser Token
+mMoveStackIndex :: Parser Token
+mMoveStackIndex = do
+  dirChar <- char '{' <|> char '}'
+  amount <- option 1 natParser
+  let off = amount * calcDirCoef (Just dirChar)
+  return $ TokMoveStackIndex off
+
+parseGenericOperationSymbol :: Parser GenericOperation
+parseGenericOperationSymbol = do
+  let ops = [ ("+", OpAdd)
+            , ("-", OpSubtract)
+            , ("!", OpNegate)
+            , ("*", OpMultiply)
+            , ("^", OpPower)
+            , ("/", OpDivide)
+            ]
+  let opParsers = map opToParser ops
+  let modParser = opToParser ("\\\\", OpModulo)
+  let intDivParser = opToParser ("\\", OpIntDivide)
+  foldl1 (<|>) opParsers <|> try modParser <|> intDivParser
+  where
+    opToParser :: (String, GenericOperation) -> Parser GenericOperation
+    opToParser (str, res) = do
+      string str
+      return res
+
+mOperation :: Parser Token
+mOperation = do
+  char ':'
+  op <- parseGenericOperationSymbol
+  return $ TokOperation op
+
+-- Phase 5
+-- advanced (whole stack) duplicate
 -- mPortalPocketDimensionStart :: Parser Token
 -- mPortalPocketDimensionEnd :: Parser Token
 
@@ -209,8 +263,8 @@ mLang :: Parser SourceCode
 mLang = do
   whiteSpaces
   let rawParsers = [
-                    mPush, mPop, mSpike, mOrb, mPortalPocketDimensionEntrance, mComparator,
-                    mLever, mComment, mPortalTwoWay, mPortalEntrance, mPortalExit, mDuplicateNItems
+                    mPush, mPop, mSpike, mOrb, mPortalPocketDimensionEntrance, mComparator, mLever, mComment,
+                    mPortalTwoWay, mPortalEntrance, mPortalExit, mDuplicateNItems, mMoveStackIndex, mOperation
                    ]
   let rawParsersWrapped = map wrapWithPosition rawParsers
   let highParsers = [] :: [Parser TokenWithPosition]

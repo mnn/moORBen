@@ -39,6 +39,7 @@ library
                       , lens == 4.*
                       , mtl == 2.*
                       , containers == 0.5.*
+                      , MissingH -any
   default-language:     Haskell2010
 
 test-suite moORBen-test

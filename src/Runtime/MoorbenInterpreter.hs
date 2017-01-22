@@ -18,6 +18,7 @@ import           Control.Monad.State
 import           Data.Map.Strict        (Map)
 import qualified Data.Map.Strict        as Map
 import           Data.Maybe
+import           System.IO (hFlush, stdout)
 import           Text.Read              (readMaybe)
 
 import qualified Parser.MoorbenParser   as Parser
@@ -97,6 +98,9 @@ invokePrintString newLine keep tapeIdx = do
     then when newLine $ io $ putStrLn ""
     else invokePrintString newLine keep tapeIdx
 
+flushStdOut :: RuntimeStateMonad IO ()
+flushStdOut = io $ hFlush stdout
+
 invokeReadInteger :: Bool -> Int -> RuntimeStateMonad IO ()
 invokeReadInteger allowFail tapeIdx = do
   input <- io getLine
@@ -104,9 +108,16 @@ invokeReadInteger allowFail tapeIdx = do
     Nothing  -> unless allowFail $ invokeReadInteger allowFail tapeIdx
     Just num -> tapes %= \t -> pushToTape t tapeIdx $ StackInt num
 
+invokeSwap :: Int -> RuntimeStateMonad IO ()
+invokeSwap tapeIdx = do
+  tapes' <- use tapes
+  itemA <- popFromTapeOrError tapeIdx
+  itemB <- popFromTapeOrError tapeIdx
+  tapes %= \t -> pushToTape t tapeIdx itemA
+  tapes %= \t -> pushToTape t tapeIdx itemB
+
 invokeBuiltInPocketDimension :: String -> OrbState -> RuntimeStateMonad IO Bool
 invokeBuiltInPocketDimension name orbState = do
-  -- TODO
   let tapeIdx = orbState^.tapeIndex
   case lookup name fns of
     Nothing -> return False
@@ -124,7 +135,9 @@ invokeBuiltInPocketDimension name orbState = do
         ("pIk",  invokePrintInteger True True),
         ("pIr",  invokePrintInteger False False),
         ("pIkr", invokePrintInteger False True),
-        ("rI",   invokeReadInteger False)
+        ("rI",   invokeReadInteger False),
+        ("swap", invokeSwap)
+        -- TODO: read string
       ]
 
 invokeUserDefinedPocketDimension :: String -> OrbState -> RuntimeStateMonad IO Bool
@@ -151,19 +164,24 @@ assertItem item test errMsg = unless (test item) $ error errMsg
 
 assertItemIsBool :: StackItem -> RuntimeStateMonad IO Bool
 assertItemIsBool i = do
-  assertItem i isStackBool $ "Expected item " ++ show i ++ " to be boolean."
+  assertItem i isStackBool $ "Expected item " ++ show i ++ " to be a boolean."
   return $ case i of (StackBool x) -> x
 
-popFromTapeOrError :: Int -> RuntimeStateMonad IO StackItem 
+assertItemIsInt :: StackItem -> RuntimeStateMonad IO Int
+assertItemIsInt i = do
+  assertItem i isStackInt $ "Expected item " ++ show i ++ " to be an integer."
+  return $ case i of (StackInt x) -> x
+
+popFromTapeOrError :: Int -> RuntimeStateMonad IO StackItem
 popFromTapeOrError tapeIdx = do
   tps <- use tapes
   let (itemOpt, newTapes) = popFromTape tps tapeIdx
   tapes .= newTapes
   return $ case itemOpt of
     Nothing -> error "Attempted to pop an item from empty stack."
-    Just x -> x
+    Just x  -> x
 
-interpretComparator :: Int -> Parser.RelationalOperator -> RuntimeStateMonad IO () 
+interpretComparator :: Int -> Parser.RelationalOperator -> RuntimeStateMonad IO ()
 interpretComparator tapeIdx op = do
   assertNumberOfItemsOnStack tapeIdx 2
   -- TODO: "if not error" after error processing is improved
@@ -179,7 +197,7 @@ leverVelocity :: Int
 leverVelocity = 3
 
 getBounceSign :: Parser.LeverBounceDirection -> Int
-getBounceSign Parser.BounceLeft = -1
+getBounceSign Parser.BounceLeft  = -1
 getBounceSign Parser.BounceRight = 1
 
 interpretLever :: Int -> Parser.LeverBounceDirection -> Int -> RuntimeStateMonad IO ()
@@ -204,6 +222,40 @@ usePortal name orbIdx orbState = do
     Nothing -> error $ "Failed to find exit of a portal named \"" ++ name ++ "\"."
     Just pos -> orbs.ix orbIdx.position .= pos
 
+moveStackIndex :: Int -> Int -> Int -> RuntimeStateMonad IO ()
+moveStackIndex offset tapeIdx orbIdx = do
+  let newIndex = tapeIdx + offset
+  tapes %= \t -> ensureTapeIndexIsValid t newIndex
+  orbs. ix orbIdx.tapeIndex .= newIndex
+
+pushToTapeS :: Int -> StackItem -> RuntimeStateMonad IO ()
+pushToTapeS tapeIdx item = tapes %= \t -> pushToTape t tapeIdx item
+
+divAndRound :: Int -> Int -> Int
+divAndRound x y = round $ fromIntegral x / fromIntegral y
+
+interpretOperation :: Parser.GenericOperation -> Int -> RuntimeStateMonad IO () 
+interpretOperation op tapeIdx =
+  case op of
+    Parser.OpAdd -> twoIntOp (+)
+    Parser.OpSubtract -> twoIntOp (-)
+    Parser.OpNegate -> oneIntOp negate
+    Parser.OpMultiply -> twoIntOp (*)
+    Parser.OpPower -> twoIntOp (^)
+    Parser.OpDivide -> twoIntOp divAndRound
+    Parser.OpIntDivide -> twoIntOp div
+    Parser.OpModulo -> twoIntOp mod
+  where
+    twoIntOp f = do
+      a <- popFromTapeOrError tapeIdx
+      b <- popFromTapeOrError tapeIdx
+      [aVal, bVal] <- mapM assertItemIsInt [a, b]
+      pushToTapeS tapeIdx $ StackInt (f aVal bVal)
+    oneIntOp f = do
+      a <- popFromTapeOrError tapeIdx
+      aVal <- assertItemIsInt a
+      pushToTapeS tapeIdx $ StackInt (f aVal)
+
 interpretInstruction :: (Parser.TokenWithPosition, Int, OrbState) -> RuntimeStateMonad IO ()
 interpretInstruction (Parser.TokenWithPosition pos token, orbIdx, orbState) = do
   -- TODO
@@ -222,9 +274,12 @@ interpretInstruction (Parser.TokenWithPosition pos token, orbIdx, orbState) = do
     (Parser.TokDuplicate stackOffset amount) -> interpretDuplicate tapeIdx stackOffset amount
     (Parser.TokPortalEntrance name) -> usePortal name orbIdx orbState
     (Parser.TokPortalTwoWay name) -> usePortal name orbIdx orbState
+    (Parser.TokMoveStackIndex offset) -> moveStackIndex offset tapeIdx orbIdx
+    (Parser.TokOperation op) -> interpretOperation op tapeIdx
     _ -> do
       io $ putStrLn $ "Unknown instruction: " ++ show token
       return ()
+  flushStdOut
 
 moveOrb :: OrbState -> OrbState
 moveOrb orb = OrbState {

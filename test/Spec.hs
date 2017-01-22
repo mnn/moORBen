@@ -216,6 +216,18 @@ test_mDuplicateNItems = do
   let neg = ["==", "{", "}=", "", " =", "1=", "={{", "=-1", "={-1"]
   testParser mDuplicateNItems pos neg
 
+test_mMoveStackIndex :: IO ()
+test_mMoveStackIndex = do
+  let pos = ["}", "{", "{2", "}3"]
+  let neg = ["", "}}", "{{", "{-1"]
+  testParser mMoveStackIndex pos neg
+
+test_mOperation :: IO ()
+test_mOperation = do
+  let pos = [":+", ":-", ":!", ":*", ":^", ":/", ":\\", ":\\\\"]
+  let neg = ["", "::", "+", "\\"]
+  testParser mOperation pos neg
+
 {-
 test_ = do
   let pos = [""]

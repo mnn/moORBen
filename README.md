@@ -20,4 +20,5 @@ o               ` orb starting position
 
 Other programs
 -------------
-[Truth machine](res/TruthMachine.mrb)
+* [Truth machine](res/TruthMachine.mrb)
+* [Basic math](res/BasicMath.mrb)

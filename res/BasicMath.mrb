@@ -1,0 +1,82 @@
+` Reads two integers and performs operations on them.
+` Tapes: 0 = tmp for strings, 1 = numbers and results
+o
+
+@"Input A: "
+%pSr
+}
+
+%rI
+
+{
+@"Input B: "
+%pSr
+}
+
+%rI
+%swap
+
+{
+@"A + B = "
+%pSr
+}
+
+=2 ` backup inputs
+:+
+%pI
+
+{
+@"A - B = "
+%pSr
+}
+
+=2
+:-
+%pI
+
+{
+@"A * B = "
+%pSr
+}
+
+=2
+:*
+%pI
+
+{
+@"A / B = "
+%pSr
+}
+
+=2
+:/
+%pI
+
+{
+@"A \\ B = "
+%pSr
+}
+
+=2
+:\
+%pI
+
+{
+@"A \\\\ B = "
+%pSr
+}
+
+=2
+:\\
+%pI
+
+{
+@"-A = "
+%pSr
+}
+
+=
+:!
+%pI
+
+^

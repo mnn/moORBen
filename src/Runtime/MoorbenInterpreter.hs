@@ -231,10 +231,13 @@ moveStackIndex offset tapeIdx orbIdx = do
 pushToTapeS :: Int -> StackItem -> RuntimeStateMonad IO ()
 pushToTapeS tapeIdx item = tapes %= \t -> pushToTape t tapeIdx item
 
+pushListTapeS :: Int -> [StackItem] -> RuntimeStateMonad IO ()
+pushListTapeS tapeIdx xs = tapes %= \t -> pushListToTape t tapeIdx xs
+
 divAndRound :: Int -> Int -> Int
 divAndRound x y = round $ fromIntegral x / fromIntegral y
 
-interpretOperation :: Parser.GenericOperation -> Int -> RuntimeStateMonad IO () 
+interpretOperation :: Parser.GenericOperation -> Int -> RuntimeStateMonad IO ()
 interpretOperation op tapeIdx =
   case op of
     Parser.OpAdd -> twoIntOp (+)
@@ -256,6 +259,11 @@ interpretOperation op tapeIdx =
       aVal <- assertItemIsInt a
       pushToTapeS tapeIdx $ StackInt (f aVal)
 
+interpretDupToOther :: Int -> Int -> RuntimeStateMonad IO ()
+interpretDupToOther tapeIdx offset = do
+  items <- uses tapes (`getStackByIndex` tapeIdx)
+  pushListTapeS (tapeIdx + offset) (reverse items)
+
 interpretInstruction :: (Parser.TokenWithPosition, Int, OrbState) -> RuntimeStateMonad IO ()
 interpretInstruction (Parser.TokenWithPosition pos token, orbIdx, orbState) = do
   -- TODO
@@ -276,6 +284,8 @@ interpretInstruction (Parser.TokenWithPosition pos token, orbIdx, orbState) = do
     (Parser.TokPortalTwoWay name) -> usePortal name orbIdx orbState
     (Parser.TokMoveStackIndex offset) -> moveStackIndex offset tapeIdx orbIdx
     (Parser.TokOperation op) -> interpretOperation op tapeIdx
+    (Parser.TokPop c) -> tapes %= \t -> snd $ popNFromTape t tapeIdx c
+    (Parser.TokDuplicateToOther offset) -> interpretDupToOther tapeIdx offset
     _ -> do
       io $ putStrLn $ "Unknown instruction: " ++ show token
       return ()
@@ -337,11 +347,11 @@ io :: IO a -> RuntimeStateMonad IO a
 io = liftIO
 
 interpret :: [InterpreterFlag] -> Parser.SourceCode -> IO ()
-interpret flags code = do
+interpret flags code@(Parser.SourceCode tokens) = do
   let verbose = Verbose `elem` flags
   when verbose $ do
-    putStrLn "Input code:"
-    putStrLn $ "interpreting: " ++ show code
+    putStrLn "interpreting: "
+    mapM_ print tokens
   let initialState = RuntimeState {
       _runtimeStateSourceCode = code
     , _runtimeStateWorld = createWorld code

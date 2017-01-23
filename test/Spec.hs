@@ -228,6 +228,12 @@ test_mOperation = do
   let neg = ["", "::", "+", "\\"]
   testParser mOperation pos neg
 
+test_mPushWholeStack :: IO ()
+test_mPushWholeStack = do
+  let pos = ["=={", "==}", "==}2", "=={2"]
+  let neg = ["", "=", "==", "==}-1"]
+  testParser mPushWholeStack pos neg
+
 {-
 test_ = do
   let pos = [""]

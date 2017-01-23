@@ -59,10 +59,14 @@ ensureTapeIndexIsValid tapes@(Tapes baseIdx stacks) idx
 stackIndexToListIndex :: Tapes -> Int -> Int
 stackIndexToListIndex (Tapes baseIdx _) stackIdx = stackIdx - baseIdx
 
+getStackByIndex :: Tapes -> Int -> [StackItem]
+getStackByIndex tapes@(Tapes baseIdx stacks) idx = ensureTapeIndexIsValid tapes idx & \(Tapes _ s)->(s !! idx) & \(TapeStack xs)->xs
+
 pushToTape :: Tapes -> Int -> StackItem -> Tapes
-pushToTape tapes@(Tapes baseIdx stacks) idx item = Tapes baseIdx newStacks where
-  newStacks :: [TapeStack]
-  newStacks = stacks & ix (stackIndexToListIndex tapes idx) %~ update
+pushToTape tapes@(Tapes baseIdx stacks) idx item = Tapes baseIdx (newStacks safeTapes) where
+  safeTapes = ensureTapeIndexIsValid tapes idx
+  newStacks :: Tapes -> [TapeStack]
+  newStacks tapes@(Tapes baseIdx stacks) = stacks & ix (stackIndexToListIndex tapes idx) %~ update
   update :: TapeStack -> TapeStack
   update (TapeStack items) = TapeStack (item:items)
 

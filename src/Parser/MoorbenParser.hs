@@ -255,7 +255,14 @@ mOperation = do
   return $ TokOperation op
 
 -- Phase 5
--- advanced (whole stack) duplicate
+mPushWholeStack :: Parser Token
+mPushWholeStack = do
+  string "=="
+  dirChar <- char '{' <|> char '}'
+  amount <- option 1 natParser
+  let off = amount * calcDirCoef (Just dirChar)
+  return $ TokDuplicateToOther off
+
 -- mPortalPocketDimensionStart :: Parser Token
 -- mPortalPocketDimensionEnd :: Parser Token
 
@@ -264,7 +271,8 @@ mLang = do
   whiteSpaces
   let rawParsers = [
                     mPush, mPop, mSpike, mOrb, mPortalPocketDimensionEntrance, mComparator, mLever, mComment,
-                    mPortalTwoWay, mPortalEntrance, mPortalExit, mDuplicateNItems, mMoveStackIndex, mOperation
+                    mPortalTwoWay, mPortalEntrance, mPortalExit, mMoveStackIndex, mOperation,
+                    try mPushWholeStack <|> mDuplicateNItems
                    ]
   let rawParsersWrapped = map wrapWithPosition rawParsers
   let highParsers = [] :: [Parser TokenWithPosition]

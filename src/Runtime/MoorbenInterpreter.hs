@@ -15,10 +15,11 @@ import           Control.Concurrent
 import           Control.Lens
 import           Control.Monad
 import           Control.Monad.State
+import           Data.List              (intersect)
 import           Data.Map.Strict        (Map)
 import qualified Data.Map.Strict        as Map
 import           Data.Maybe
-import           System.IO (hFlush, stdout)
+import           System.IO              (hFlush, stdout)
 import           Text.Read              (readMaybe)
 
 import qualified Parser.MoorbenParser   as Parser
@@ -240,14 +241,14 @@ divAndRound x y = round $ fromIntegral x / fromIntegral y
 interpretOperation :: Parser.GenericOperation -> Int -> RuntimeStateMonad IO ()
 interpretOperation op tapeIdx =
   case op of
-    Parser.OpAdd -> twoIntOp (+)
-    Parser.OpSubtract -> twoIntOp (-)
-    Parser.OpNegate -> oneIntOp negate
-    Parser.OpMultiply -> twoIntOp (*)
-    Parser.OpPower -> twoIntOp (^)
-    Parser.OpDivide -> twoIntOp divAndRound
+    Parser.OpAdd       -> twoIntOp (+)
+    Parser.OpSubtract  -> twoIntOp (-)
+    Parser.OpNegate    -> oneIntOp negate
+    Parser.OpMultiply  -> twoIntOp (*)
+    Parser.OpPower     -> twoIntOp (^)
+    Parser.OpDivide    -> twoIntOp divAndRound
     Parser.OpIntDivide -> twoIntOp div
-    Parser.OpModulo -> twoIntOp mod
+    Parser.OpModulo    -> twoIntOp mod
   where
     twoIntOp f = do
       a <- popFromTapeOrError tapeIdx
@@ -328,6 +329,18 @@ genPortalExitsMap (Parser.SourceCode tokens) = exitsCombined & map conv where
   exitsCombined = simpleExits ++  twoWays
   conv (name, pos) = (name, convertPosition pos)
 
+genPocketDimensionsStartsMap :: Parser.SourceCode -> [(String, Position)]
+genPocketDimensionsStartsMap (Parser.SourceCode tokens) = starts & map conv where
+  starts = [ (name, pos) | Parser.TokenWithPosition pos (Parser.TokPocketDimensionStart name) <- tokens]
+  conv (name, pos) = (name, convertPosition pos)
+
+validateState :: RuntimeState -> IO ()
+validateState state = do
+  let nameConflicts = getNames (state^.portalExits) `intersect` getNames (state^.pocketDimensionsStarts)
+  unless (null nameConflicts) $ error $ "Found ID conflicts (portals, pocket dimensions): " ++ show nameConflicts
+  return ()
+  where getNames = map fst
+
 run :: RuntimeStateMonad IO ()
 run = do
   gotOrbs <- fmap (not . null) (use orbs)
@@ -359,7 +372,9 @@ interpret flags code@(Parser.SourceCode tokens) = do
     , _runtimeStateOrbs = startingBalls code
     , _runtimeStateTapes = startingTapes
     , _runtimeStatePortalExits = genPortalExitsMap code
+    , _runtimeStatePocketDimensionsStarts = genPocketDimensionsStartsMap code
     }
   when verbose $ putStrLn $ "initialState = " ++ show initialState
+  validateState initialState
   execStateT run initialState
   return ()

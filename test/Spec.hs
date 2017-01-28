@@ -234,6 +234,18 @@ test_mPushWholeStack = do
   let neg = ["", "=", "==", "==}-1"]
   testParser mPushWholeStack pos neg
 
+test_mPortalPocketDimensionStart :: IO ()
+test_mPortalPocketDimensionStart = do
+  let pos = ["~%f", "~%Fn1"]
+  let neg = ["", "%f", "~%", "~f"]
+  testParser mPortalPocketDimensionStart pos neg
+
+test_mPortalPocketDimensionEnd :: IO ()
+test_mPortalPocketDimensionEnd = do
+  let pos = ["_%"]
+  let neg = ["", "_", "%"]
+  testParser mPortalPocketDimensionEnd pos neg
+
 {-
 test_ = do
   let pos = [""]

@@ -105,7 +105,10 @@ intParser = do
   return $ read $ sign ++ d
 
 idParser :: Parser String
-idParser = many1 letter
+idParser = do
+  f <- letter
+  r <- many alphaNum
+  return $ f:r
 
 mString :: Parser Token
 mString = do
@@ -222,9 +225,12 @@ mDuplicateNItems = do
   let stackOffset = stackOffsetRaw * calcDirCoef dirChar
   return $ TokDuplicate stackOffset amount
 
+dirCharParser :: Parser Char
+dirCharParser = char '{' <|> char '}'
+
 mMoveStackIndex :: Parser Token
 mMoveStackIndex = do
-  dirChar <- char '{' <|> char '}'
+  dirChar <- dirCharParser
   amount <- option 1 natParser
   let off = amount * calcDirCoef (Just dirChar)
   return $ TokMoveStackIndex off
@@ -258,21 +264,34 @@ mOperation = do
 mPushWholeStack :: Parser Token
 mPushWholeStack = do
   string "=="
-  dirChar <- char '{' <|> char '}'
+  dirChar <- dirCharParser
   amount <- option 1 natParser
   let off = amount * calcDirCoef (Just dirChar)
   return $ TokDuplicateToOther off
 
--- mPortalPocketDimensionStart :: Parser Token
--- mPortalPocketDimensionEnd :: Parser Token
+mPortalPocketDimensionStart :: Parser Token
+mPortalPocketDimensionStart = do
+  string "~%"
+  id <- idParser
+  return $ TokPocketDimensionStart id
+
+mPortalPocketDimensionEnd :: Parser Token
+mPortalPocketDimensionEnd = do
+  string "_%"
+  return TokPocketDimensionEnd
+
+-- Phase 6
+-- holder
+-- sensor
 
 mLang :: Parser SourceCode
 mLang = do
   whiteSpaces
   let rawParsers = [
                     mPush, mPop, mSpike, mOrb, mPortalPocketDimensionEntrance, mComparator, mLever, mComment,
-                    mPortalTwoWay, mPortalEntrance, mPortalExit, mMoveStackIndex, mOperation,
-                    try mPushWholeStack <|> mDuplicateNItems
+                    mPortalTwoWay, mMoveStackIndex, mOperation,
+                    try mPushWholeStack <|> mDuplicateNItems, try mPortalPocketDimensionStart <|> mPortalExit,
+                    try mPortalPocketDimensionEnd <|> mPortalEntrance
                    ]
   let rawParsersWrapped = map wrapWithPosition rawParsers
   let highParsers = [] :: [Parser TokenWithPosition]

@@ -17,12 +17,13 @@ import           Runtime.RuntimeOptions
 import           Runtime.World
 
 data RuntimeState = RuntimeState
-  { _runtimeStateSourceCode  :: SourceCode
-  , _runtimeStateOptions     :: RuntimeOptions
-  , _runtimeStateOrbs        :: [OrbState]
-  , _runtimeStateTapes       :: Tapes
-  , _runtimeStateWorld       :: World
-  , _runtimeStatePortalExits :: [(String, Position)]
+  { _runtimeStateSourceCode             :: SourceCode
+  , _runtimeStateOptions                :: RuntimeOptions
+  , _runtimeStateOrbs                   :: [OrbState]
+  , _runtimeStateTapes                  :: Tapes
+  , _runtimeStateWorld                  :: World
+  , _runtimeStatePortalExits            :: [(String, Position)]
+  , _runtimeStatePocketDimensionsStarts :: [(String, Position)]
   } deriving (Show, Eq)
 
 data Tapes = Tapes Int [TapeStack] deriving (Show, Eq)

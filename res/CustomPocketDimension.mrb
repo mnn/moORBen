@@ -1,6 +1,7 @@
 o                         ~%customPocketDimension       ~%custAddOne
-@0                        %custAddOne                   :+
-%customPocketDimension    %custAddOne                   _%
-%customPocketDimension    _%
+@0                        %custAddOne                   @1
+%customPocketDimension    %custAddOne                   :+
+%customPocketDimension    _%                            _%
+%customPocketDimension
 %pI
 ^

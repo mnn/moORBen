@@ -56,6 +56,7 @@ extra-deps:
 - regex-base-0.93.2
 - regex-compat-0.95.1
 - regex-posix-0.95.2
+- safe-0.3.10
 - scientific-0.3.4.9
 - semigroupoids-5.1
 - semigroups-0.18.2

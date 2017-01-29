@@ -19,6 +19,7 @@ import           Data.List              (intersect)
 import           Data.Map.Strict        (Map)
 import qualified Data.Map.Strict        as Map
 import           Data.Maybe
+import           Safe                   (headMay)
 import           System.IO              (hFlush, stdout)
 import           Text.Read              (readMaybe)
 
@@ -47,6 +48,7 @@ startingBalls (Parser.SourceCode tokens) = positions & map convertPosition & map
       _orbStatePosition = pos
     , _orbStateVelocity = startingVelocity
     , _orbStateTapeIndex = idx
+    , _orbStateReturnStack = []
     }
 
 verbosePrint :: String -> RuntimeStateMonad IO ()
@@ -58,7 +60,7 @@ destroyOrb :: (Int, Int) -> RuntimeStateMonad IO ()
 destroyOrb (x, y) = do
   orbs %= filter fn
   return ()
-    where fn (OrbState (Position fx fy) _ _) = x /= fx && y /=fy
+    where fn (OrbState (Position fx fy) _ _ _) = x /= fx && y /=fy
 
 invokePrintCharacter :: Bool -> Bool -> Int -> RuntimeStateMonad IO ()
 invokePrintCharacter newLine keep tapeIdx = do
@@ -141,18 +143,26 @@ invokeBuiltInPocketDimension name orbState = do
         -- TODO: read string
       ]
 
-invokeUserDefinedPocketDimension :: String -> OrbState -> RuntimeStateMonad IO Bool
-invokeUserDefinedPocketDimension name orbState = do
-  -- TODO
-  io $ putStrLn $ "invokeUserDefinedPocketDimension()" ++ name ++ " not implemented yet"
-  return False
+invokeUserDefinedPocketDimension :: String -> OrbState -> Int -> RuntimeStateMonad IO Bool
+invokeUserDefinedPocketDimension name orbState orbIndex = do
+  pdStarts <- use pocketDimensionsStarts
+  io $ putStrLn $ "Looking for custom PD: " ++ name
+  case lookup name pdStarts of
+    Nothing -> return False
+    Just pos -> do
+      zoom (orbs.ix orbIndex) $ do
+        returnStack %= ((orbState^.position) :)
+        position .= pos
+      return True
 
-invokePocketDimension :: String -> OrbState -> RuntimeStateMonad IO ()
-invokePocketDimension name orbState = do
+invokePocketDimension :: String -> OrbState -> Int -> RuntimeStateMonad IO ()
+invokePocketDimension name orbState orbIndex = do
   sTapes <- use tapes
-  verbosePrint $ "invokePocketDimension" ++ show orbState ++ show sTapes
-  res <- invokeBuiltInPocketDimension name orbState <|> invokeUserDefinedPocketDimension name orbState
-  unless res (error $ "Pocket dimension \"" ++ name ++ "\" not found.")
+  verbosePrint $ "invokePocketDimension: " ++ show orbState ++ show sTapes
+  resBuiltIn <- invokeBuiltInPocketDimension name orbState
+  unless resBuiltIn $ do
+    resCustom <- invokeUserDefinedPocketDimension name orbState orbIndex
+    unless resCustom (error $ "Pocket dimension \"" ++ name ++ "\" not found.")
   return ()
 
 assertNumberOfItemsOnStack :: Int -> Int -> RuntimeStateMonad IO ()
@@ -265,6 +275,16 @@ interpretDupToOther tapeIdx offset = do
   items <- uses tapes (`getStackByIndex` tapeIdx)
   pushListTapeS (tapeIdx + offset) (reverse items)
 
+interpretPocketDimensionEnd :: Int -> RuntimeStateMonad IO ()
+interpretPocketDimensionEnd orbIdx =
+  zoom (orbs.ix orbIdx) $ do
+    rs <- use returnStack
+    case headMay rs of
+      Nothing -> error "interpretPocketDimensionEnd: Return stack is empty (encountered a pocket dimension end without entering a pocket  dimension first)."
+      Just pos -> do
+        returnStack %= tail
+        position .= pos
+
 interpretInstruction :: (Parser.TokenWithPosition, Int, OrbState) -> RuntimeStateMonad IO ()
 interpretInstruction (Parser.TokenWithPosition pos token, orbIdx, orbState) = do
   -- TODO
@@ -276,7 +296,7 @@ interpretInstruction (Parser.TokenWithPosition pos token, orbIdx, orbState) = do
     (Parser.TokPush (Parser.TokInt int)) -> tapes %= \t -> pushToTape t tapeIdx $ StackInt int
     (Parser.TokPush Parser.TokTrue) -> tapes %= \t -> pushToTape t tapeIdx $ StackBool True
     (Parser.TokPush Parser.TokFalse) -> tapes %= \t -> pushToTape t tapeIdx $ StackBool False
-    (Parser.TokPocketDimensionEntrance name) -> invokePocketDimension name orbState
+    (Parser.TokPocketDimensionEntrance name) -> invokePocketDimension name orbState orbIdx
     (Parser.TokComparator op) -> interpretComparator tapeIdx op
     (Parser.TokLeverTest dir) -> interpretLever tapeIdx dir orbIdx
     Parser.TokOrb -> return ()
@@ -287,6 +307,7 @@ interpretInstruction (Parser.TokenWithPosition pos token, orbIdx, orbState) = do
     (Parser.TokOperation op) -> interpretOperation op tapeIdx
     (Parser.TokPop c) -> tapes %= \t -> snd $ popNFromTape t tapeIdx c
     (Parser.TokDuplicateToOther offset) -> interpretDupToOther tapeIdx offset
+    Parser.TokPocketDimensionEnd -> interpretPocketDimensionEnd orbIdx
     _ -> do
       io $ putStrLn $ "Unknown instruction: " ++ show token
       return ()
@@ -297,6 +318,7 @@ moveOrb orb = OrbState {
       _orbStatePosition = Position { _positionX = pX, _positionY = pY }
     , _orbStateVelocity = Velocity { _velocityX = velX, _velocityY = velY }
     , _orbStateTapeIndex = orb^.tapeIndex
+    , _orbStateReturnStack = orb^.returnStack
   }
   where
     vel = orb^.velocity

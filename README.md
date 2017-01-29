@@ -3,7 +3,7 @@ moORBen
 
 This project is an esoteric language based around falling orbs and a tape of stacks. Each orb has a tape index which points to a stack, an active stack for this orb. A program syntax resembles physical object viewed from side.
 
-Warning: It is not yet finished. Some basic programs are working, but several things are missing (custom pocket dimensions [aka procedures], more built in pocket dimensions, a cloning of a whole stack, orbs synchronization [a sensor and a holder]). Following examples are fully working.
+Warning: It is not yet finished. Most of programs are working, but a few things are missing (more built-in pocket dimensions, orbs synchronization [a sensor and a holder]). Following examples are fully working.
 
 Hello world
 ----------

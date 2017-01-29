@@ -15,6 +15,7 @@ data OrbState = OrbState
   { _orbStatePosition  :: Position
   , _orbStateVelocity  :: Velocity
   , _orbStateTapeIndex :: Int
+  , _orbStateReturnStack    :: [Position]
   } deriving (Show, Eq)
 
 makeFields ''OrbState

@@ -221,7 +221,7 @@ mDuplicateNItems = do
   char '='
   amount <- option 1 natParser
   dirChar <- optionMaybe $ char '{' <|> char '}'
-  stackOffsetRaw <- option 0 natParser
+  stackOffsetRaw <- option 1 natParser
   let stackOffset = stackOffsetRaw * calcDirCoef dirChar
   return $ TokDuplicate stackOffset amount
 

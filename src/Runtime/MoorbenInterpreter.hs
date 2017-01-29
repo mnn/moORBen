@@ -199,17 +199,40 @@ popFromTapeOrError tapeIdx = do
     Nothing -> error "Attempted to pop an item from empty stack."
     Just x  -> x
 
+interpretComparatorInts :: Int -> Int -> Parser.RelationalOperator -> Int -> RuntimeStateMonad IO Bool
+interpretComparatorInts a b op tapeIdx =
+  case op of
+    Parser.RelLess        -> twoOp a b (<)
+    Parser.RelLessOrEqual -> twoOp a b (<=)
+    Parser.RelMore        -> twoOp a b (>)
+    Parser.RelMoreOrEqual -> twoOp a b (>=)
+    _                     -> return False
+  where r x = x >> return True
+        twoOp :: Int -> Int -> (Int -> Int -> Bool) -> RuntimeStateMonad IO Bool
+        twoOp a b o = r $ tapes %= \t -> pushToTape t tapeIdx $ StackBool $ o a b
+
+interpretComparatorEquals :: StackItem -> StackItem -> Parser.RelationalOperator -> Int -> RuntimeStateMonad IO Bool
+interpretComparatorEquals a b op tapeIdx =
+  case op of
+   Parser.RelEqual -> r $ tapes %= \t -> pushToTape t tapeIdx $ StackBool $ a == b
+   Parser.RelNonEqual -> r $ tapes %= \t -> pushToTape t tapeIdx $ StackBool $ a /= b
+   _ -> return False
+  where r x = x >> return True
+
 interpretComparator :: Int -> Parser.RelationalOperator -> RuntimeStateMonad IO ()
 interpretComparator tapeIdx op = do
   assertNumberOfItemsOnStack tapeIdx 2
   -- TODO: "if not error" after error processing is improved
   a <- popFromTapeOrError tapeIdx
   b <- popFromTapeOrError tapeIdx
+  let bothInts = isStackInt a && isStackInt b
   -- TODO: "if not error" after error processing is improved
-  case op of
-    Parser.RelEqual -> tapes %= \t -> pushToTape t tapeIdx $ StackBool $ a == b
-    -- TODO: rest of operators
-    _ -> io $ putStrLn $ "Unknown operator: " ++ show op
+  processed1 <- if bothInts
+                  then interpretComparatorInts (stackIntValue a) (stackIntValue b) op tapeIdx
+                  else return False
+  processed2 <- interpretComparatorEquals a b op tapeIdx
+  unless (processed1 || processed2) $ error $ "Unknown operator: " ++ show op
+  return ()
 
 leverVelocity :: Int
 leverVelocity = 3
@@ -218,19 +241,26 @@ getBounceSign :: Parser.LeverBounceDirection -> Int
 getBounceSign Parser.BounceLeft  = -1
 getBounceSign Parser.BounceRight = 1
 
-interpretLever :: Int -> Parser.LeverBounceDirection -> Int -> RuntimeStateMonad IO ()
-interpretLever tapeIdx dir orbIdx = do
+setBounceVelocity :: Parser.LeverBounceDirection -> Int -> RuntimeStateMonad IO ()
+setBounceVelocity dir orbIdx = orbs.ix orbIdx.velocity.x .= leverVelocity * getBounceSign dir
+
+interpretLever :: Parser.LeverBounceDirection -> Int -> RuntimeStateMonad IO ()
+interpretLever = setBounceVelocity
+
+interpretTestLever :: Int -> Parser.LeverBounceDirection -> Int -> RuntimeStateMonad IO ()
+interpretTestLever tapeIdx dir orbIdx = do
   p <- popFromTapeOrError tapeIdx
   -- TODO: "if not error" after error processing is improved
   b <- assertItemIsBool p
   -- TODO: "if not error" after error processing is improved
-  when b $ orbs.ix orbIdx.velocity.x .= leverVelocity * getBounceSign dir
+  when b $ setBounceVelocity dir orbIdx
 
 interpretDuplicate :: Int -> Int -> Int -> RuntimeStateMonad IO ()
 interpretDuplicate tapeIdx stackOffset amount = do
   let targetTapeIdx = tapeIdx + stackOffset
-  (toPush, _) <- fmap (\t -> popNFromTape t tapeIdx amount) (use tapes)
+  (toPush, _) <- uses tapes $ \t -> popNFromTape t tapeIdx amount
   tapes %= \tps -> pushListToTape tps targetTapeIdx (reverse toPush)
+  uses tapes $ \t -> verbosePrint $ "after interpretDuplicate: " ++ show t
   return ()
 
 usePortal :: String -> Int -> OrbState -> RuntimeStateMonad IO ()
@@ -305,9 +335,11 @@ interpretInstruction (Parser.TokenWithPosition pos token, orbIdx, orbState) = do
     (Parser.TokPush Parser.TokFalse) -> tapes %= \t -> pushToTape t tapeIdx $ StackBool False
     (Parser.TokPocketDimensionEntrance name) -> invokePocketDimension name orbState orbIdx
     (Parser.TokComparator op) -> interpretComparator tapeIdx op
-    (Parser.TokLeverTest dir) -> interpretLever tapeIdx dir orbIdx
+    (Parser.TokLeverStatic dir) -> interpretLever dir orbIdx
+    (Parser.TokLeverTest dir) -> interpretTestLever tapeIdx dir orbIdx
     Parser.TokOrb -> return ()
     (Parser.TokDuplicate stackOffset amount) -> interpretDuplicate tapeIdx stackOffset amount
+    (Parser.TokPortalExit _) -> return ()
     (Parser.TokPortalEntrance name) -> usePortal name orbIdx orbState
     (Parser.TokPortalTwoWay name) -> usePortal name orbIdx orbState
     (Parser.TokMoveStackIndex offset) -> moveStackIndex offset tapeIdx orbIdx
@@ -315,9 +347,7 @@ interpretInstruction (Parser.TokenWithPosition pos token, orbIdx, orbState) = do
     (Parser.TokPop c) -> tapes %= \t -> snd $ popNFromTape t tapeIdx c
     (Parser.TokDuplicateToOther offset) -> interpretDupToOther tapeIdx offset
     Parser.TokPocketDimensionEnd -> interpretPocketDimensionEnd orbIdx
-    _ -> do
-      io $ putStrLn $ "Unknown instruction: " ++ show token
-      return ()
+    _ -> error $ "Unknown instruction: " ++ show token
   flushStdOut
 
 moveOrb :: OrbState -> OrbState

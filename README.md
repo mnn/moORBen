@@ -23,3 +23,4 @@ Other programs
 * [Truth machine](res/TruthMachine.mrb)
 * [Basic math](res/BasicMath.mrb)
 * [Cat](res/Cat.mrb)
+* [Factorial](res/Factorial.mrb)

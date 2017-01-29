@@ -118,6 +118,9 @@ isStackInt :: StackItem -> Bool
 isStackInt (StackInt _) = True
 isStackInt _            = False
 
+stackIntValue :: StackItem -> Int
+stackIntValue (StackInt x) = x
+
 isStackBool :: StackItem -> Bool
 isStackBool (StackBool _) = True
 isStackBool _             = False

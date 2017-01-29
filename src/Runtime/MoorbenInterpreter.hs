@@ -95,11 +95,13 @@ invokePrintInteger newLine keep tapeIdx = do
 invokePrintString :: Bool -> Bool -> Int -> RuntimeStateMonad IO ()
 invokePrintString newLine keep tapeIdx = do
   when keep $ error "\"keep\" argument is not supported."
-  invokePrintCharacter False False tapeIdx
-  sTapes <- use tapes
-  if isStackEmpty sTapes tapeIdx
-    then when newLine $ io $ putStrLn ""
-    else invokePrintString newLine keep tapeIdx
+  emptyAfterInvoke <- uses tapes $ \t -> isStackEmpty t tapeIdx
+  unless emptyAfterInvoke $ do
+    invokePrintCharacter False False tapeIdx
+    sTapes <- use tapes
+    if isStackEmpty sTapes tapeIdx
+      then when newLine $ io $ putStrLn ""
+      else invokePrintString newLine keep tapeIdx
 
 flushStdOut :: RuntimeStateMonad IO ()
 flushStdOut = io $ hFlush stdout
@@ -110,6 +112,11 @@ invokeReadInteger allowFail tapeIdx = do
   case (readMaybe input :: Maybe Int) of
     Nothing  -> unless allowFail $ invokeReadInteger allowFail tapeIdx
     Just num -> tapes %= \t -> pushToTape t tapeIdx $ StackInt num
+
+invokeReadString :: Int -> RuntimeStateMonad IO ()
+invokeReadString tapeIdx = do
+  input <- io getLine
+  tapes %= \t -> pushStringToTape t tapeIdx input
 
 invokeSwap :: Int -> RuntimeStateMonad IO ()
 invokeSwap tapeIdx = do
@@ -139,14 +146,14 @@ invokeBuiltInPocketDimension name orbState = do
         ("pIr",  invokePrintInteger False False),
         ("pIkr", invokePrintInteger False True),
         ("rI",   invokeReadInteger False),
+        ("rS",   invokeReadString),
         ("swap", invokeSwap)
-        -- TODO: read string
       ]
 
 invokeUserDefinedPocketDimension :: String -> OrbState -> Int -> RuntimeStateMonad IO Bool
 invokeUserDefinedPocketDimension name orbState orbIndex = do
   pdStarts <- use pocketDimensionsStarts
-  io $ putStrLn $ "Looking for custom PD: " ++ name
+  verbosePrint $ "Looking for custom PD: " ++ name
   case lookup name pdStarts of
     Nothing -> return False
     Just pos -> do

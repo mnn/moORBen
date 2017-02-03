@@ -1,3 +1,7 @@
+` Factorial
+` ---------
+` Program reads an integer from standard input, computes factorial and prints it on standard output.
+
 o
 %rI
 =}

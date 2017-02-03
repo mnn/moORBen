@@ -24,3 +24,4 @@ Other programs
 * [Basic math](res/BasicMath.mrb)
 * [Cat](res/Cat.mrb)
 * [Factorial](res/Factorial.mrb)
+* [99 Bottles](res/99Bottles.mrb)

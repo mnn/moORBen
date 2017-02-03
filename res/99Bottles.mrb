@@ -1,0 +1,35 @@
+` 99 bottles of beer
+` Not terribly clever, nevertheless a working solution.
+` First stack holds counter, second is for strings for printing.
+
+        o                    ~%printOne                                  ~%printZero
+        @99                  }                                           }
+                             @"1 bottle of beer on the wall,"            @"No bottles of beer on the wall."
+        ~A                   %pS                                         %pS
+        =                    @"1 bottle of beer."                        {
+        @1                   %pS                                         _%
+        ?=                   {
+        /?                   _%
+     %printOne
+     _B =
+        @0
+        ?=
+        \?   
+           %printZero
+           ^
+        %pIkr
+        }
+        @" bottles of beer on the wall,"
+        %pS
+        {
+        %pIkr
+        }
+        @" bottles of beer."
+        %pS
+        @"Take one down, pass it around,"
+        %pS
+        {
+        ~B
+        @-1
+        :+
+        _A
